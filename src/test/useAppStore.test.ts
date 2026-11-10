@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useAppStore } from "../stores/useAppStore";
 import { Product } from "../types";
+import { useNavigationStore } from "../stores/useNavigationStore";
 
 const mockProductWith3D: Product = {
   id: "prod-3d",
@@ -35,12 +36,16 @@ const mockProductWithout3D: Product = {
 
 describe("useAppStore - Quản lý chế độ 2D/3D & Trạng thái UI (Phase 1)", () => {
   beforeEach(() => {
+    useNavigationStore.setState(useNavigationStore.getInitialState(), true);
     useAppStore.setState({
       mode: "2D",
       isCartOpen: false,
       isCheckoutOpen: false,
       inspectingProduct: null,
       hoveredProduct: null,
+      hoveredDistance: null,
+      isPointerLocked: false,
+      activeNavigationProduct: null,
       searchQuery: "",
       selectedCategory: "Tất cả",
       target3DPosition: null,
@@ -104,15 +109,49 @@ describe("useAppStore - Quản lý chế độ 2D/3D & Trạng thái UI (Phase 1
     const state = useAppStore.getState();
     expect(state.mode).toBe("3D");
     expect(state.target3DPosition).toEqual([-2.1, 1.2, -1.8]);
-    expect(state.hoveredProduct).toEqual(mockProductWith3D);
+    // Navigation is not proof that the center ray has hit a reachable product.
+    expect(state.hoveredProduct).toBeNull();
+    expect(state.activeNavigationProduct).toEqual(mockProductWith3D);
   });
 
   it("goToProductIn3D: chuyển sang 3D bình thường nếu sản phẩm chưa có tọa độ kệ", () => {
+    useAppStore.setState({
+      target3DPosition: [-2.1, 1.2, -1.8],
+      hoveredProduct: mockProductWith3D,
+    });
+
     useAppStore.getState().goToProductIn3D(mockProductWithout3D);
 
     const state = useAppStore.getState();
     expect(state.mode).toBe("3D");
     expect(state.target3DPosition).toBeNull();
+    expect(state.hoveredProduct).toBeNull();
+    expect(state.activeNavigationProduct).toBeNull();
+  });
+
+  it("dẫn đường từ 3D không dịch chuyển camera ngay lập tức", () => {
+    const player = { x: 1.4, z: 2 };
+    useNavigationStore.getState().updatePose(player, 0);
+    useAppStore.getState().navigateToProductIn3D(mockProductWith3D);
+    expect(useAppStore.getState().target3DPosition).toBeNull();
+    expect(useNavigationStore.getState().player).toEqual(player);
+    expect(useNavigationStore.getState().path[0]).toEqual(player);
+  });
+
+  it("hủy tìm kệ xóa cả lệnh chuyển vị trí chưa được camera tiêu thụ", () => {
+    useAppStore.getState().goToProductIn3D(mockProductWith3D);
+    useNavigationStore.getState().setAutoWalking(true);
+    useAppStore.getState().setActiveNavigationProduct(null);
+    expect(useAppStore.getState().target3DPosition).toBeNull();
+    expect(useNavigationStore.getState()).toMatchObject({ path: [], destination: null, autoWalking: false });
+  });
+
+  it("mua nhanh 2D bỏ bộ lọc cũ và không để lại đích 3D", () => {
+    useAppStore.getState().goToProductIn3D(mockProductWith3D);
+    useAppStore.getState().setSelectedCategory(mockProductWith3D.category);
+    useAppStore.getState().openProductIn2D(mockProductWithout3D);
+    expect(useAppStore.getState()).toMatchObject({ mode: "2D", selectedCategory: "Tất cả", searchQuery: mockProductWithout3D.name, activeNavigationProduct: null, target3DPosition: null });
+    expect(useNavigationStore.getState().status).toBe("idle");
   });
 });
 

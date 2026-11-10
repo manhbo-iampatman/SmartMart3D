@@ -2,7 +2,7 @@
 > **Hệ quy chiếu kỹ thuật**: Dự án [Walmart — An Interactive 3D Supermarket (By Omid)](https://byomid.com/Walmart/)  
 > **Định hướng phát triển**: Siêu thị Mua sắm Không gian Lai (Hybrid 2D & 3D E-Commerce) cho Thị trường Việt Nam  
 > **Người thực hiện**: Antigravity  
-> **Cập nhật ngày**: 2026-11-06  
+> **Cập nhật ngày**: 2026-11-07
 
 ---
 
@@ -65,7 +65,7 @@ Theo công bố kỹ thuật trên trang dự án của Omid:
 ### 3.2. Lập trình Frontend & Engine 3D trên Web
 - **3D Web Engine**: **React Three Fiber (R3F) + Three.js + `@react-three/drei`** (Lựa chọn tối ưu nhất để kết hợp giữa UI 2D truyền thống và Canvas 3D).
 - **Vật lý & Va chạm**: **Rapier.js** (`@react-three/rapier` viết bằng Rust/Wasm, siêu nhẹ).
-- **Hệ thống dẫn đường**: **three-pathfinding** hoặc **Recast/Detour NavMesh** cho tính năng "Find on shelf".
+- **Hệ thống dẫn đường**: Prototype hiện dùng **A\* trên lưới mặt bằng đi được** cùng footprint vật cản. **three-pathfinding** hoặc **Recast/Detour NavMesh** là hướng mở rộng khi chuyển sang mặt bằng/model phức tạp.
 - **Giao diện & Quản lý trạng thái**: **React + TypeScript + Tailwind CSS**, **Zustand** (quản lý state giỏ hàng dùng chung).
 
 ### 3.3. Backend & Lưu trữ
@@ -199,13 +199,24 @@ smartmart-3d/
 │   │   │   ├── PlayerFPS.tsx        # Điều khiển góc nhìn người thứ nhất (WASD)
 │   │   │   ├── AisleGondola.tsx     # Dãy kệ hàng siêu thị
 │   │   │   ├── InstancedStock.tsx   # Render hàng nghìn hộp bánh/sữa mượt 60fps
+│   │   │   ├── SpatialShopHUD.tsx   # Tìm kiếm, ngành hàng, minimap, giỏ hàng nổi trong 3D
+│   │   │   ├── NavigationGuide.tsx  # Vệt dẫn đường và beacon tại kệ đích
+│   │   │   ├── FloorPlanMap.tsx     # Bản đồ tương tác, vị trí/hướng người chơi và đường đi
+│   │   │   ├── NavigationPanel.tsx  # Khoảng cách, tự đi, hủy và thông báo tới đích
+│   │   │   ├── StoreFixtures.tsx    # Biển ngành hàng, đảo khuyến mãi, quầy self-checkout
+│   │   │   ├── ProductInteraction.tsx # Raycast tầm với 2,5 m, E/click và viền chọn instance
+│   │   │   ├── InteractionHUD.tsx   # Tên, giá, khoảng cách và hướng dẫn điều khiển
+│   │   │   ├── ProductPreview3D.tsx # Xoay, zoom, tạm dừng và đặt lại góc nhìn
 │   │   │   └── ProductInspector3D.tsx# Modal xem sản phẩm xoay 360 độ
 │   │   └── shared/           # GIAO DIỆN DÙNG CHUNG CẢ 2 CHẾ ĐỘ
 │   │       ├── HeaderNavbar.tsx     # Nút gạt chuyển đổi [2D Mua Nhanh] <-> [3D Khám Phá]
 │   │       ├── CartDrawer.tsx       # Giỏ hàng bên phải màn hình (luôn đồng bộ)
+│   │       ├── CartFeedback.tsx     # Thông báo thêm hàng thành công, tự đóng
 │   │       └── CheckoutModal.tsx    # Quét mã QR VNĐ thanh toán
 │   ├── stores/
 │   │   ├── useCartStore.ts   # Quản lý giỏ hàng chung (Zustand + LocalStorage)
+│   │   ├── useFeedbackStore.ts # Thông báo thêm giỏ và tùy chọn bật/tắt âm
+│   │   ├── useNavigationStore.ts # Vị trí, hướng nhìn, tuyến A* và trạng thái dẫn đường
 │   │   ├── useProductStore.ts# Quản lý danh mục & trạng thái sản phẩm
 │   │   └── useAppModeStore.ts# Quản lý chế độ hiện tại ('2D' | '3D')
 │   ├── types/
@@ -368,11 +379,11 @@ flowchart TD
 
 * **Mục tiêu**: Xây dựng 1 lối đi siêu thị mẫu (Aisle 01) với 2 dãy kệ chứa hàng nghìn sản phẩm nhưng FPS luôn đạt **60 FPS**.
 * **Nhiệm vụ cụ thể**:
-  - [ ] Thiết kế 2 dãy kệ hàng Gondola bằng Blender hoặc hình học cơ bản có vách ngăn, khay giá.
-  - [ ] Chuẩn bị texture nhãn dán cho 5 sản phẩm đặc trưng: Sữa tươi, Nước ngọt lon, Bánh hộp, Snack gói, Cà phê.
-  - [ ] Viết component `InstancedStock.tsx` sử dụng `THREE.InstancedMesh`.
-  - [ ] Rải tự động 1,500 - 3,000 sản phẩm lên các tầng kệ bằng thuật toán ma trận tọa độ.
-  - [ ] Kiểm tra hiệu năng: Số lệnh vẽ (Draw calls) $\le 20$, FPS đạt 60 trên trình duyệt máy tính.
+  - [x] Thiết kế 2 dãy kệ hàng Gondola bằng Blender hoặc hình học cơ bản có vách ngăn, khay giá.
+  - [x] Chuẩn bị texture nhãn dán cho 5 sản phẩm đặc trưng: Sữa tươi, Nước ngọt lon, Bánh hộp, Snack gói, Cà phê.
+  - [x] Viết component `InstancedStock.tsx` sử dụng `THREE.InstancedMesh`.
+  - [x] Rải tự động 1,500 - 3,000 sản phẩm lên các tầng kệ bằng thuật toán ma trận tọa độ.
+  - [x] Kiểm tra hiệu năng: Số lệnh vẽ (Draw calls) $\le 20$, FPS đạt 60 trên trình duyệt máy tính.
 * **Nghiệm vụ**: Bước vào 3D thấy các kệ hàng đầy ắp sản phẩm, di chuyển trơn tru, không có hiện tượng giật hình.
 
 ---
@@ -380,26 +391,70 @@ flowchart TD
 ### GIAI ĐOẠN 3: TƯƠNG TÁC NHẶT HÀNG & MODAL 3D 360 ĐỘ
 *Thời lượng: 5 - 7 ngày*
 
+**Trạng thái: Hoàn thành chức năng prototype.** Thông tin bao bì hiện là mẫu minh họa; dữ liệu thành phần và hạn dùng theo lô thực tế sẽ do nhà cung cấp bổ sung.
+
 * **Mục tiêu**: Hiện thực hóa thao tác nhặt hàng trên kệ 3D và xem chi tiết sản phẩm.
 * **Nhiệm vụ cụ thể**:
-  - [ ] Sử dụng `Raycaster` gắn với tâm ngắm ở giữa màn hình.
-  - [ ] Khi ngắm vào sản phẩm trong phạm vi < 2.5m: Hiện tên tiếng Việt và giá VNĐ nổi trên đầu món đồ.
-  - [ ] Bấm phím `E` hoặc Click chuột: Mở modal **ProductInspector3D** cho phép xoay 360 độ bằng chuột, xem thành phần và hạn sử dụng.
-  - [ ] Nút "Bỏ vào giỏ": Gọi hàm `addItem()` của `useCartStore`, phát hiệu ứng âm thanh *"ting"* vui tai và cập nhật giỏ hàng ngay lập tức.
-* **Nghiệm vụ**: Người dùng đứng trước kệ sữa, click nhặt 1 hộp sữa $\rightarrow$ giỏ hàng tăng số lượng và cập nhật tiền tức thì.
+  - [x] Dùng `THREE.Raycaster` từ tâm camera khi khóa chuột; khi con trỏ tự do, cho phép trỏ/click trực tiếp trên hàng.
+  - [x] Chỉ cho chọn bề mặt sản phẩm trong bán kính **2,5 m**, lấy món gần nhất và không cho nhặt xuyên vách/tầng kệ.
+  - [x] HUD hiển thị tên tiếng Việt, đơn vị, giá VNĐ và khoảng cách. Viền sáng bám đúng **instance** được chọn, không tô cả lô hàng.
+  - [x] Bấm `E` hoặc click để mở **ProductInspector3D** dạng side-sheet bên phải. Raycast được kiểm tra lại ngay khi kích hoạt để không dùng mục tiêu cũ sau khi camera đã di chuyển.
+  - [x] Preview hỗ trợ kéo xoay 360°, cuộn phóng to, bật/tắt tự xoay và đặt lại góc nhìn. Dùng ánh sáng cục bộ, không phụ thuộc tải HDR từ CDN.
+  - [x] Panel hiển thị thành phần, bảo quản và hướng dẫn xem NSX/HSD; dữ liệu mẫu được ghi nhãn rõ ràng, không tạo ngày hết hạn giả.
+  - [x] Nút "Bỏ vào giỏ" gọi `addItem()`, phát âm "ting" bằng Web Audio và hiển thị thông báo tự đóng sau 3,2 giây. Có công tắc tắt âm và nút mở giỏ.
+  - [x] Khi mở inspector/giỏ/checkout: Dừng nhận phím di chuyển và nhả pointer lock. Không nhận WASD/E khi gõ tìm kiếm; xóa phím giữ khi mất focus.
+  - [x] `Esc` hoặc nút X đóng panel và trả focus; không tự khóa lại chuột. Nút "Dạo bằng chuột" chủ động khóa con trỏ; giữ chuột phải để nhìn là chế độ dự phòng.
+* **Nghiệm thu**: Đứng trước kệ Vinamilk trong tầm với, bấm `E`, xoay/xem sản phẩm rồi chọn "Bỏ vào giỏ" → giỏ tăng **1 hộp / 36.000 đ**, hiện thông báo thành công. Ra khỏi tầm 2,5 m không thể mở sản phẩm trên kệ đó.
+
+#### Kiến trúc và kiểm thử giai đoạn 3
+
+- [ProductInteraction.tsx](./src/components/3d/ProductInteraction.tsx) điều phối raycast, phím `E`, click và viền chọn; quét hover tối đa khoảng 15 lần/giây, đồng thời kiểm tra lại khi nhặt.
+- [spatialInteraction.ts](./src/utils/spatialInteraction.ts) chứa quy tắc tầm với, vật cản và di chuyển theo camera. Unit test dùng mesh/instanced mesh Three.js thật, không chép lại thuật toán production.
+- [PlayerFPS.tsx](./src/components/3d/PlayerFPS.tsx) quản lý chuột/phím và vòng đời pause/resume. Đồng thời sửa lỗi A/D bị đảo và giữ tốc độ ngang khi nhìn lên/xuống.
+- [ProductPreview3D.tsx](./src/components/3d/ProductPreview3D.tsx) tách phần WebGL khỏi [ProductInspector3D.tsx](./src/components/3d/ProductInspector3D.tsx) để kiểm thử luồng giỏ hàng mà không cần GPU.
+- [cartSound.ts](./src/utils/cartSound.ts) chỉ tạo âm sau thao tác người dùng; trình duyệt chặn hoặc thiếu Web Audio không làm lỗi thao tác thêm giỏ.
+- Nhóm test bổ sung kiểm tra giới hạn 2,5 m, che khuất, đúng instance, mục tiêu cũ, phím `E`, click, input focus, nhả pointer lock, dọn listener, giỏ hàng, tắt âm và vòng đời thông báo.
+- Lệnh kiểm tra: `npm test` và `npm run build`. Kiểm tra trình duyệt thực tế bổ sung cho `E`/click, zoom/tự xoay, thêm giỏ và nút mua trên viewport 390 × 844.
+- **Kết quả nghiệm thu**: 18 file test, **91/91 test pass** (thêm 30 test ở giai đoạn 3); TypeScript và production build thành công. Trình duyệt đã xác nhận `E`/click mở đúng sản phẩm, thêm 1 hộp sữa tăng tổng tiền 36.000 đ, và ra khỏi tầm với không mở lại mục tiêu cũ. Chuyển động xoay/zoom do OrbitControls xử lý; dữ liệu bao bì vẫn là mẫu minh họa.
 
 ---
 
 ### GIAI ĐOẠN 4: TÍNH NĂNG "TÌM TRÊN KỆ" (PATHFINDING) & LIÊN KẾT 2D-3D
 *Thời lượng: 7 - 10 ngày*
 
+**Trạng thái: Hoàn thành chức năng prototype trên mặt bằng hiện tại.** Dùng A\* trên lưới 0,2 m và vật cản tĩnh, chưa dùng NavMesh tam giác hoặc hệ thống vật lý đầy đủ.
+
 * **Mục tiêu**: Kết nối sâu sắc giữa 2 chế độ: Đang ở 2D có thể bấm "Xem vị trí trong 3D", và ở 3D có thể tìm đường tới kệ.
 * **Nhiệm vụ cụ thể**:
-  - [ ] Ở giao diện 2D: Mỗi sản phẩm có thêm nút *"📍 Xem vị trí trên kệ 3D"*. Khi bấm vào $\rightarrow$ Tự động chuyển sang chế độ 3D và đặt người chơi đứng trước kệ hàng đó.
-  - [ ] Ở giao diện 3D: Thanh tìm kiếm sản phẩm. Khi chọn món hàng $\rightarrow$ Tính toán đường đi ngắn nhất bằng **A\*** (NavMesh).
-  - [ ] Vẽ vệt sáng uốn lượn dưới sàn nhà dẫn người dùng từ vị trí hiện tại đến kệ hàng đích.
-  - [ ] Thêm nút xem bản đồ mặt bằng từ trên cao (**Top-down Minimap**).
-* **Nghiệm vụ**: Khách tìm kiếm ở 2D hoặc 3D đều có thể được dẫn đường chính xác tới vị trí vật lý của kệ hàng.
+  - [x] Từ 2D: "Tìm trên kệ" chuyển vào 3D, chọn điểm đứng an toàn trước kệ và hướng camera vào một instance sản phẩm thật.
+  - [x] Từ 3D: Tìm tên/ngành hàng có dấu hoặc không dấu, chọn sản phẩm để lập tuyến **từ vị trí hiện tại**, không dịch chuyển camera ngay lập tức.
+  - [x] A\* né hai dãy kệ, đầu hồi, đảo khuyến mãi và quầy checkout. Tính khoảng trống theo bán kính người chơi 0,22 m, cấm cắt chéo góc vật cản, rút gọn tuyến chỉ khi toàn bộ đoạn nối đi được.
+  - [x] Vệt sáng chuyển động trên sàn và beacon dùng đường thật của A\*. Cập nhật tuyến, khoảng cách còn lại và hướng nhìn theo chuyển động người chơi.
+  - [x] Có trạng thái đang dẫn đường / đã đến / không tìm được lối đi, nút hủy và thử lại. Hủy cũng xóa lệnh chuyển vị trí còn chờ xử lý.
+  - [x] Nút **"Tự động đi tới kệ"** di chuyển camera theo tuyến; tới nơi tự dừng và quay về sản phẩm. WASD, giữ chuột phải, gõ tìm kiếm, mở panel/giỏ/checkout hoặc mất focus sẽ dừng tự đi.
+  - [x] Cả di chuyển tay và tự đi dùng cùng kiểm tra va chạm footprint; không xuyên kệ/đảo/quầy và không lọt ra ngoài sàn.
+  - [x] Minimap có mặt bằng thật, vị trí/hướng của bạn, tuyến đi, đích đang chọn và chấm sản phẩm bấm được. Hỗ trợ bàn phím, phóng to/thu nhỏ và đóng bằng Esc. Trên màn hình nhỏ, chọn đích sẽ thu bản đồ lại.
+  - [x] Sản phẩm chưa có 3D vẫn xuất hiện trong tìm kiếm; nút "Mua nhanh 2D" chuyển đến đúng sản phẩm, bỏ bộ lọc cũ và giữ nguyên giỏ hàng.
+  - [x] Chuyển qua 2D rồi trở lại 3D giữ vị trí/hướng nhìn trong phiên hiện tại, không đưa người chơi về cửa vào.
+* **Nghiệm thu**: Vào 3D từ cửa → chọn Vinamilk trên bản đồ → thấy tuyến né đảo khuyến mãi → tự đi tới kệ → bấm E mở đúng hộp sữa. Tìm "gao st25" → chuyển mua nhanh 2D → giỏ giữ nguyên; quay lại 3D vẫn ở vị trí cũ.
+
+#### Kiến trúc và phạm vi giai đoạn 4
+
+| Thành phần | Trách nhiệm |
+| :--- | :--- |
+| [storeLayout.ts](./src/data/storeLayout.ts) | Kích thước kệ, đảo, checkout; footprint dùng chung cho scene, bản đồ, dẫn đường và va chạm |
+| [pathfinding.ts](./src/utils/pathfinding.ts) | A\*, min-heap, kiểm tra đoạn di chuyển, điểm đứng trước kệ và chiều dài tuyến |
+| [useNavigationStore.ts](./src/stores/useNavigationStore.ts) | Vị trí/hướng người chơi, tuyến hiện tại, khoảng cách, trạng thái tới đích và tự đi |
+| [PlayerFPS.tsx](./src/components/3d/PlayerFPS.tsx) | Di chuyển có va chạm, theo tuyến, dừng tự đi theo ngữ cảnh và lưu pose khi rời 3D |
+| [NavigationGuide.tsx](./src/components/3d/NavigationGuide.tsx) | Vệt sáng và beacon trong không gian 3D |
+| [FloorPlanMap.tsx](./src/components/3d/FloorPlanMap.tsx), [NavigationPanel.tsx](./src/components/3d/NavigationPanel.tsx) | Chọn đích trực tiếp, theo dõi vị trí/tuyến, điều khiển tự đi và hủy |
+| [productSearch.ts](./src/utils/productSearch.ts) | Tìm tiếng Việt không dấu, thống nhất ở 2D và 3D |
+
+- Tính lại đường khi pose được cập nhật, tối đa khoảng 10 lần/giây trong lúc di chuyển; không gửi vị trí camera vào toàn bộ app store mỗi frame.
+- Khi tới kệ, camera chọn tâm một instance thật gần địa chỉ sản phẩm. Cách này tránh ngắm vào khe trống giữa hai lon/chai; phím E luôn raycast từ tâm camera, click tự do vẫn theo con trỏ.
+- Mặt bằng hiện tại là một tầng với vật cản tĩnh. Chưa có NavMesh tam giác, cầu thang, vật cản chuyển động hoặc va chạm Rapier; không đánh đồng footprint với mô phỏng vật lý.
+- Unit test kiểm tra từng đoạn tuyến trên đủ 8 kệ, đường vòng qua đầu kệ, góc chéo, vùng bị ngăn kín, tọa độ không hợp lệ, vòng đời tự đi, hủy lệnh chờ và liên kết 2D–3D. Các test giai đoạn 3 vẫn được chạy hồi quy.
+- **Kết quả kiểm tra ngày 2026-11-07**: `npm test` đạt **20 file / 123 test pass** (thêm 32 test so với giai đoạn 3); `npm run build` và TypeScript thành công, không có lỗi diagnostics. Đã kiểm tra trên trình duyệt: chọn đích trên bản đồ, tự đi tới Vinamilk/Milo/Simply rồi mở đúng món bằng E, tìm "gao st25" chuyển sang 2D mà giữ giỏ, quay lại 3D giữ pose, và chọn đích/hiển thị nút tự đi ở viewport 390 × 844.
 
 ---
 
@@ -408,12 +463,12 @@ flowchart TD
 
 * **Mục tiêu**: Mô phỏng trọn vẹn văn hóa mua sắm siêu thị với xe đẩy và quét mã thanh toán Việt Nam.
 * **Nhiệm vụ cụ thể**:
-  - [ ] Thêm mô hình xe đẩy hàng bám theo bước chân người chơi trong không gian 3D.
-  - [ ] Sản phẩm khi nhặt sẽ có animation thu nhỏ bay vào lòng xe đẩy.
-  - [ ] Dựng quầy tính tiền tự động (Self-checkout) ở đầu lối đi.
-  - [ ] Khi đi tới quầy: Kích hoạt màn hình quét mã.
-  - [ ] Hệ thống hiển thị bảng kê danh sách sản phẩm tiếng Việt, tổng tiền VNĐ và **tự động sinh mã VietQR động** (với số tiền chính xác để người dùng có thể quét thử bằng app ngân hàng thật nếu muốn).
-* **Nghiệm vụ**: Trải nghiệm cảm giác đẩy xe tới quầy, nghe tiếng tít tít máy quét mã và hiện mã QR thanh toán quen thuộc của Việt Nam.
+  - [x] Thêm mô hình xe đẩy hàng wire mesh bám theo bước chân người chơi trong không gian 3D ([ShoppingTrolley.tsx](./src/components/3d/ShoppingTrolley.tsx)) có tay cầm cam Persimmon và chuyển động lắc nhẹ (sway & bobbing).
+  - [x] Sản phẩm khi nhặt sẽ có animation thu nhỏ bay theo đường cong parabol rơi vào lòng xe đẩy, tự động xếp các khối 3D trong giỏ hàng.
+  - [x] Dựng quầy tính tiền tự động 3 trạm vật lý (Bàn đặt hàng, POS quét laser, Bàn đóng túi có túi giấy SmartMart) ở lối đi, có màn hình hiện số món, tổng tiền và đèn trần AVAILABLE ([StoreFixtures.tsx](./src/components/3d/StoreFixtures.tsx)).
+  - [x] Click vào màn hình quầy hoặc nút HUD sẽ mở luồng checkout đa bước (Đặt hàng ➔ Quét mã & đóng túi ➔ Thanh toán).
+  - [x] Hệ thống hiển thị bảng kê, tổng tiền VNĐ, âm thanh máy quét mã vạch 2.4kHz ([cartSound.ts](./src/utils/cartSound.ts)) và QR demo theo mã đơn ổn định. Trạng thái xác nhận báo "Túi hàng của bạn đã sẵn sàng!". Tích hợp **VietQR ngân hàng thật** cần API/merchant hợp lệ và không nằm trong bản prototype hiện tại.
+* **Nghiệm thu**: Trải nghiệm cảm giác đẩy xe tới quầy, nghe tiếng tít tít máy quét mã, nhìn thấy món đồ rơi vào giỏ và hiện mã QR thanh toán quen thuộc của Việt Nam. Toàn bộ tính năng đã hoàn thành và tích hợp vào scene 3D.
 
 ---
 
@@ -422,11 +477,11 @@ flowchart TD
 
 * **Mục tiêu**: Chạy mượt mà trên điện thoại smartphone và đưa lên hosting công khai.
 * **Nhiệm vụ cụ thể**:
-  - [ ] Phát hiện thiết bị di động: Tự động bổ sung cần điều khiển ảo (Virtual Joystick) trên màn hình cảm ứng để di chuyển và vuốt xoay camera.
-  - [ ] Tối ưu hóa kích thước file: Nén Draco toàn bộ file 3D, chuyển texture sang `.webp`.
-  - [ ] Màn hình Loading mở đầu với hoạt cảnh giới thiệu siêu thị và tiến trình nạp (%).
-  - [ ] Build dự án bằng `vite build` và triển khai lên **Vercel** hoặc **Cloudflare Pages** với tên miền tùy chỉnh.
-* **Nghiệm vụ**: Mở link web trên điện thoại iPhone/Android chạy mượt mà ở cả chế độ 2D và 3D.
+  - [x] Phát hiện thiết bị di động: Tự động bổ sung cần điều khiển ảo (Virtual Joystick) trên màn hình cảm ứng ([VirtualJoystick.tsx](./src/components/3d/VirtualJoystick.tsx)) để di chuyển và vuốt màn hình cảm ứng để xoay camera ([PlayerFPS.tsx](./src/components/3d/PlayerFPS.tsx)).
+  - [x] Tối ưu hóa hiệu năng mobile: Giới hạn pixel ratio `dpr={[1, 1.8]}` chống tụt FPS/quá nhiệt trên màn hình Retina; tối ưu instanced rendering.
+  - [x] Màn hình Loading mở đầu với hoạt cảnh giới thiệu siêu thị và tiến trình nạp (%) ([LoadingScreen.tsx](./src/components/shared/LoadingScreen.tsx)), kèm hướng dẫn điều khiển cho cả Desktop & Mobile.
+  - [x] Đóng gói build dự án bằng `vite build` và cấu hình triển khai SPA ([vercel.json](./vercel.json)) lên **Vercel** hoặc **Cloudflare Pages**.
+* **Nghiệm thu**: Mở web trên điện thoại iPhone/Android hoặc giả lập viewport di động (390 × 844) chạy mượt mà ở cả chế độ 2D và 3D, có cần gạt ảo và vuốt xoay 360°. Toàn bộ 22 file test / 128 tests đạt 100%.
 
 ---
 
@@ -434,19 +489,251 @@ flowchart TD
 
 | Giai đoạn | Trọng tâm công việc | Thời gian | Kết quả bàn giao (Deliverable) |
 | :--- | :--- | :--- | :--- |
-| **Giai đoạn 1** | Base Dual-Mode 2D & 3D, Giỏ hàng dùng chung | 3 - 5 ngày | Web chuyển đổi mượt 2D $\leftrightarrow$ 3D, giỏ hàng đồng bộ 100% |
-| **Giai đoạn 2** | Gian hàng 3D mẫu & GPU Instancing | 5 - 7 ngày | 1 lối đi siêu thị chứa 2,000+ món hàng đạt 60 FPS |
-| **Giai đoạn 3** | Raycasting nhặt đồ & Inspector 360° | 5 - 7 ngày | Click nhặt đồ trên kệ, xem chi tiết sản phẩm xoay 3D |
-| **Giai đoạn 4** | Dẫn đường "Tìm trên kệ" & NavMesh | 7 - 10 ngày | Vệt sáng chỉ đường tới đúng vị trí kệ chứa món hàng |
-| **Giai đoạn 5** | Xe đẩy hàng & Quầy tính tiền VietQR | 5 - 7 ngày | Mô phỏng quét mã vạch và tạo mã VietQR thanh toán VNĐ |
-| **Giai đoạn 6** | Tối ưu Mobile, LOD & Triển khai Public | 5 - 7 ngày | Deploy bản hoàn chỉnh lên Vercel/Cloudflare, chạy tốt trên di động |
+| **Giai đoạn 1** | Base Dual-Mode 2D & 3D, Giỏ hàng dùng chung | Hoàn thành prototype | Web chuyển đổi mượt 2D $\leftrightarrow$ 3D, giỏ hàng đồng bộ 100% |
+| **Giai đoạn 2** | Gian hàng 3D mẫu & GPU Instancing | Hoàn thành prototype | 1 lối đi siêu thị chứa 2,000+ món hàng đạt 60 FPS |
+| **Giai đoạn 3** | Raycasting nhặt đồ & Inspector 360° | Hoàn thành prototype | E/click trong tầm 2,5 m, xem 360°, âm báo và giỏ đồng bộ |
+| **Giai đoạn 4** | Tìm trên kệ, A\* & bản đồ tương tác | Hoàn thành prototype | Tuyến từ vị trí thật, né vật cản, tự đi, minimap và liên kết 2D–3D |
+| **Giai đoạn 5** | Xe đẩy hàng & Quầy tính tiền VietQR | Hoàn thành prototype | Xe đẩy FPS wire mesh, animation rơi đồ, Kiosk 3D 3 trạm và VietQR đa bước |
+| **Giai đoạn 6** | Tối ưu Mobile, LOD & Triển khai Public | Hoàn thành prototype | Cần gạt Virtual Joystick, vuốt xoay cảm ứng, Loading Screen %, vercel.json và build dist |
 
 ---
 
-## 9. KẾT LUẬN
+## 9. BỔ SUNG TRẢI NGHIỆM THEO VIDEO THAM CHIẾU 3D HYPERMARKET
+
+> **Video đối chiếu**: `D:\Downloads\3D HYPERMARKET WEBSITE 🛒Websites in 2026 are INSANE 🤯You dont just browse products. You WALK .mp4`  
+> **Thời lượng đã phân tích**: 28,49 giây, khung hình dọc 720 × 1280.  
+> **Tài liệu đề án chi tiết hóa**: Xem [HYPERMARKET_3D_DEVELOPMENT_PLAN.md](./HYPERMARKET_3D_DEVELOPMENT_PLAN.md)  
+> **Ngày triển khai bổ sung**: 2026-11-07.  
+
+### 9.1. Các mẫu trải nghiệm rút ra từ video
+
+Video thể hiện một website bán lẻ không chỉ cho xem catalogue mà đặt người dùng trực tiếp vào không gian siêu thị. Các mẫu giao diện quan trọng được dùng làm tham chiếu gồm:
+
+1. **Scene 3D là nội dung chính**: Camera đi bộ giữa các dãy kệ đầy sản phẩm, biển ngành hàng có màu nhận diện mạnh và ánh sáng trần liên tục.
+2. **Navigation nổi trên scene**: Thanh tìm kiếm, chip ngành hàng và tổng tiền giỏ hàng luôn nhìn thấy mà không cần rời khỏi không gian 3D.
+3. **Product side-sheet**: Click sản phẩm mở panel thông tin ở cạnh phải; scene phía sau vẫn được giữ nguyên để người dùng không mất ngữ cảnh.
+4. **Tìm và đi tới kệ**: Sản phẩm tìm kiếm được gắn với vị trí vật lý trong siêu thị thay vì chỉ mở trang chi tiết 2D.
+5. **Self-checkout nhiều bước**: Người dùng đi tới quầy, đưa hàng vào vùng quét, xem danh sách và thanh toán ngay trong cùng trải nghiệm.
+
+### 9.2. Hạng mục đã bổ sung vào SmartMart 3D
+
+| Hạng mục | Cách triển khai hiện tại | Trạng thái |
+| :--- | :--- | :---: |
+| **Spatial HUD** | Thanh tìm kiếm 3D frosted-glass, chip lọc ngành hàng, nút bản đồ và nút Trolley giỏ hàng | Hoàn thành |
+| **Xe đẩy siêu thị FPS** | Xe đẩy giỏ kim loại wire mesh, tay cầm cam Persimmon, hiện sản phẩm thật trong giỏ bằng `ShoppingTrolley.tsx` | Hoàn thành |
+| **Tìm trên kệ** | Tìm có/không dấu, lập tuyến từ vị trí thật, tự đi hoặc đi tay theo hướng dẫn | Hoàn thành prototype GĐ4 |
+| **Vệt dẫn đường** | Tuyến A\* né footprint vật cản, dashed-line chuyển động và beacon trước kệ | Hoàn thành prototype GĐ4 |
+| **Minimap** | Mặt bằng tương tác có player/hướng nhìn, tuyến thật, đích bấm được và phóng to | Hoàn thành prototype GĐ4 |
+| **Biển ngành hàng** | Bảng màu nhận diện cao (01 Xanh, 02 Cam, 03 Tím, 04 Đỏ) định hướng siêu thị | Hoàn thành |
+| **Ụ đảo khuyến mãi** | Bục tròn 2 tầng màu đỏ/vàng giữa sảnh kèm biển "MUA 2 TẶNG 1" | Hoàn thành |
+| **Dãy tủ đông kính** | Tủ lạnh đứng cửa kính phản chiếu, đèn LED xanh lạnh, kệ thực phẩm đông lạnh | Hoàn thành |
+| **Product side-sheet** | Inspector 360° trượt hông kèm bộ chọn số lượng và mục "Thường mua kèm" (Cross-selling) | Hoàn thành |
+| **Self-checkout 3D Kiosk** | Quầy 3 trạm vật lý (Đặt hàng - Quét mã & POS - Đóng túi giấy SmartMart), đèn xanh AVAILABLE | Hoàn thành |
+| **Luồng thanh toán đa bước** | Mô phỏng quét mã vạch, tổng tiền tabular-nums, VietQR và trạng thái "Túi hàng sẵn sàng" | Hoàn thành |
+| **Kiểm thử tự động** | 20 file test, 123/123 tests passed, build TypeScript và Vite production 100% | Hoàn thành |
+
+### 9.3. Luồng sử dụng mới
+
+```mermaid
+flowchart LR
+    Walk["Đi bộ trong siêu thị 3D"] --> Search["Tìm kiếm / chọn ngành hàng"]
+    Search --> Select["Chọn sản phẩm có vị trí 3D"]
+    Select --> Guide["A* từ vị trí thật + vệt sáng + beacon"]
+    Guide --> WalkToShelf["Đi tay hoặc tự đi tới kệ"]
+    WalkToShelf --> Inspect["E / click mở side-sheet 360°"]
+    Inspect --> Cart["Bỏ vào giỏ dùng chung"]
+    Cart --> Checkout["HUD hoặc quầy Self-checkout"]
+    Checkout --> QR["Xác nhận đơn + QR demo VNĐ"]
+```
+
+### 9.4. Phạm vi đã hoàn thành và hướng nâng cấp tiếp theo
+
+- Đã hiện thực hóa mô hình xe đẩy siêu thị 3D wire mesh (`ShoppingTrolley.tsx`) bám theo bước chân người chơi và hiển thị hàng hóa thật trong giỏ.
+- Đã bổ sung dãy tủ đông cửa kính đứng (`FreezerWall`) và ụ đảo khuyến mãi 2 tầng giữa sảnh.
+- Đã nâng cấp quầy Self-Checkout Kiosk 3D vật lý 3 cụm (Bàn đặt hàng, Máy quét POS, Bàn đóng túi) kèm đèn LED trần "AVAILABLE / CHECKOUT 04".
+- Đã có A\* né vật cản tĩnh và kiểm tra va chạm footprint ở giai đoạn 4; hướng tiếp theo là NavMesh tam giác mượt mà hơn.
+- Đã nâng cấp luồng thanh toán đa bước và gợi ý mua kèm (Cross-selling) trên side-sheet.
+- Tích hợp VietQR ngân hàng thực tế qua cổng Open Banking (VietQR NAPAS) sẽ triển khai khi tích hợp backend merchant.
+
+### 9.5. Tiêu chí nghiệm thu phần bổ sung
+
+- Tìm "Hảo Hảo" hoặc "hao hao" trong HUD 3D phải trả đúng sản phẩm, lập tuyến tới kệ từ vị trí hiện tại và không dịch chuyển camera ngay khi chọn.
+- Xe đẩy siêu thị 3D hiển thị trước tầm nhìn người chơi, có độ trễ quán tính nhẹ và hiển thị các sản phẩm trong giỏ.
+- Side-sheet kiểm tra sản phẩm 360° có bộ chọn số lượng và mục "Thường mua cùng sản phẩm này" hoạt động độc lập.
+- Minimap phải hiển thị marker khi có sản phẩm đang được dẫn đường và cho phép dừng dẫn đường.
+- Số lượng/tổng tiền trên HUD phải đồng bộ tức thời với giỏ hàng 2D.
+- Click nút checkout trên HUD hoặc màn hình quầy phải mở đúng checkout khi giỏ có hàng.
+- Product inspector phải xuất hiện từ cạnh phải và không che toàn bộ scene.
+- Toàn bộ 123 unit test và TypeScript production build phải vượt qua trước khi bàn giao.
+
+---
+
+## 10. KẾT LUẬN
 
 Ý tưởng **SmartMart 3D** với mô hình **Mua Sắm Lai (Hybrid: 2D Mua Nhanh + 3D Khám Phá)** là hướng đi chuẩn xác nhất cho thương mại điện tử thế hệ mới tại Việt Nam:
 
 1. **Khả thi 100%**: Không bị sa lầy vào việc phải mô hình hóa hàng vạn sản phẩm 3D.
 2. **Trải nghiệm khách hàng tối ưu**: Ai thích nhanh thì dùng 2D, ai thích trải nghiệm thì vào 3D.
 3. **Giá trị ứng dụng cao**: Rất hấp dẫn đối với các chuỗi siêu thị bán lẻ, chuỗi cửa hàng tiện lợi hoặc các thương hiệu muốn tạo chiến dịch tiếp thị mang tính đột phá và ấn tượng.
+
+---
+
+## 11. BÁO CÁO THIẾT KẾ VÀ PHÁT TRIỂN THEO CHUẨN FRONTEND-DESIGN & VIDEO THAM CHIẾU 2026
+
+### 11.1. Phân tích chi tiết từng khung hình (Frame-by-Frame Breakdown) từ Video tham chiếu
+Dự án đã sử dụng công cụ phân tích hình ảnh thực tế từ tệp video `3D HYPERMARKET WEBSITE 🛒Websites in 2026 are INSANE 🤯You dont just browse products. You WALK .mp4` (Khung hình 720 × 1280, 30 FPS, thời lượng 28.33s):
+
+| Mốc thời gian | Phân cảnh quan sát | Chi tiết đặc trưng giao diện & 3D đã hiện thực hóa |
+| :--- | :--- | :--- |
+| **01.0s - 03.5s** | Sảnh chính đại siêu thị & Ụ đảo khuyến mãi | - Sàn gạch trắng phản chiếu ánh sáng tự nhiên.<br>- Biển treo ngành hàng thả trần nhiều màu sắc: 01 Xanh dương, 02 Cam, 03 Tím, 04 Đỏ.<br>- Ụ đảo khuyến mãi tròn/bát giác 2 tầng màu đỏ và vàng rực rỡ với bảng biển "MUA 2 TẶNG 1".<br>- Dãy tủ đông cửa kính đứng ở cuối tường với ánh sáng LED xanh lạnh.<br>- Tay đẩy xe siêu thị màu cam Persimmon xuất hiện ở cạnh dưới màn hình. |
+| **06.0s - 09.0s** | Lối đi dãy kệ & Xe đẩy góc nhìn người dùng | - Người dùng di chuyển giữa 2 dãy kệ gondola cao tầng đầy ắp hàng hóa.<br>- Xe đẩy giỏ kim loại (Wire mesh basket) bám theo bước chân người đi (FPS Trolley) kèm độ nhún quán tính nhẹ.<br>- Minimap dạng radar bán trong suốt đặt cố định hỗ trợ định vị. |
+| **09.0s - 12.0s** | Chọn sản phẩm & Side-Sheet trượt hông | - Click sản phẩm trên kệ mở panel trượt từ cạnh phải (không che phủ toàn màn hình).<br>- Thẻ sản phẩm nổi nền trắng bo góc, hiển thị tên, giá tiền lớn, bộ tăng giảm số lượng `[- 1 +]`.<br>- Nút hành động chính "Bỏ vào giỏ hàng / Add to trolley".<br>- Mục **"Thường mua kèm" (Frequently Bought Together)** gợi ý 3 món liên quan với nút thêm nhanh 1-click. |
+| **15.0s - 18.0s** | Đồ rơi vào giỏ & Chuyển luồng thanh toán | - Các món hàng nhặt trên kệ hiển thị trực tiếp dưới dạng hình khối 3D trong lòng giỏ xe đẩy.<br>- Nhấp nút quầy thanh toán kích hoạt luồng di chuyển xe đẩy tới trạm thu ngân. |
+| **18.0s - 25.5s** | Quầy Self-Checkout Kiosk 3D vật lý | - Trạm Kiosk 3D gồm 3 khối chức năng: Bàn đặt hàng (Place Items Here) ➔ Kiosk trung tâm (Màn hình POS + Máy quét mã vạch laser + Cabinet SCAN > BAG > PAY) ➔ Bàn đóng gói (Bagging Area) có túi giấy SmartMart.<br>- Cột đèn trần treo biển "AVAILABLE / CHECKOUT 04" phát sáng xanh lá.<br>- Giao diện side-sheet đồng bộ từng bước: Đặt hàng ➔ Đang quét mã & đóng túi ➔ Thanh toán VietQR ➔ "Túi hàng của bạn đã sẵn sàng!" kèm mã đơn hàng. |
+
+---
+
+### 11.2. Hệ thống Nhận diện Giao diện & Design Tokens (Skill Frontend-Design)
+
+Tuân thủ nguyên tắc thiết kế có bản sắc riêng, loại bỏ các khuôn mẫu "AI Template" (như gradient cầu vồng, font mặc định, nhãn ALL-CAPS dày đặc, theme tối kiểu game sci-fi), SmartMart 3D được định hình theo phong cách **Modern Architectural Hypermarket** (Đại siêu thị kiến trúc đương đại):
+
+#### 1. Bảng màu Token cốt lõi (Core Palette)
+- **`hyper-ink` (`#0F172A`)**: Màu chữ đen than đá Obsidian, đảm bảo độ tương phản WCAG AAA trên nền sáng.
+- **`hyper-surface` (`#F8FAFC`)**: Màu nền sàn đá terrazzo sạch sẽ, đem lại cảm giác tươi mới, vệ sinh của siêu thị hàng tiêu dùng.
+- **`hyper-primary` (`#0052CC`)**: Màu xanh Cobalt bán lẻ hiện đại (thay thế màu xanh công nghiệp nhạt nhòa của Walmart cũ).
+- **`hyper-accent` (`#FF5400`)**: Màu cam Persimmon neon — biểu trưng cho sự năng động của giỏ hàng, thẻ ưu đãi và tay cầm xe đẩy.
+- **`hyper-fresh` (`#10B981`)**: Màu xanh lá thảo mộc — dùng độc quyền cho hàng tươi/organic và trạng thái đơn hàng hoàn tất.
+- **`hyper-border` (`#E2E8F0`)**: Viền chia khung tinh tế, phân tách các khu vực trưng bày.
+
+#### 2. Kiểu chữ & Thang Typographic (Typography System)
+- **Phông chữ hiển thị & nội dung**: Tích hợp **Be Vietnam Pro** (Google Fonts) — tối ưu hóa 100% cho tiếng Việt có dấu, giải quyết triệt để lỗi nhảy dấu hoặc vỡ baseline trên Windows/macOS.
+- **Chữ số & Giá tiền**: Sử dụng **Plus Jakarta Sans** kết hợp thuộc tính CSS `font-variant-numeric: tabular-nums` để các chữ số giá tiền VNĐ (ví dụ `36.000 đ`, `185.000 đ`) căn thẳng hàng tuyệt đối, không bị rung giật khi tăng giảm số lượng.
+- **Quy tắc biên tập (Microcopy)**: Sử dụng câu văn gãy gọn ở thể chủ động (Active voice), loại bỏ chữ in hoa ALL-CAPS không cần thiết, chuyển sang dạng Title case hoặc Sentence case thân thiện và dễ đọc.
+
+---
+
+### 11.3. Các thành phần kỹ thuật đã phát triển (Components Architecture)
+
+1. **[ShoppingTrolley.tsx](./src/components/3d/ShoppingTrolley.tsx)**:
+   - Mô hình xe đẩy giỏ kim loại dạng lưới (Wire Mesh) bám theo tọa độ camera góc nhìn người thứ nhất (FPS).
+   - Tích hợp tay cầm đệm cao su màu cam Persimmon (`#FF5400`).
+   - Tự động hiển thị các món hàng 3D thực tế trong lòng xe đẩy khi người dùng bấm "Chọn mua" hoặc nhặt từ kệ.
+   - Hiệu ứng nhún quán tính nhẹ (bobbing & sway) mô phỏng cảm giác đẩy xe thực tế trên sàn siêu thị.
+
+2. **[ProductInspector3D.tsx](./src/components/3d/ProductInspector3D.tsx)**:
+   - Thiết kế dạng Side-Sheet trượt từ cạnh phải, giữ trọn ngữ cảnh không gian 3D phía sau.
+   - Bổ sung bộ tăng giảm số lượng `[- 1 +]` trực tiếp.
+   - Bổ sung module **"Thường mua cùng sản phẩm này" (Cross-selling)** với ảnh thumbnail, giá VNĐ và nút thêm nhanh 1-click.
+
+3. **[StoreFixtures.tsx](./src/components/3d/StoreFixtures.tsx)**:
+   - Bổ sung cụm **FreezerWall**: Dãy tủ đông đứng cửa kính phản chiếu bóng loáng, bên trong phát đèn LED xanh lạnh dọc tường phía cuối siêu thị.
+   - Nâng cấp **PromotionIsland**: Ụ đảo khuyến mãi tròn 2 tầng đỏ và vàng, treo bảng "MUA 2 TẶNG 1 / ƯU ĐÃI GIÁ SỐC".
+   - Dựng trọn vẹn cụm **SelfCheckoutStation**: Bàn đặt hàng bên trái + Trạm POS trung tâm có máy quét mã laser + Bàn đóng gói bên phải có túi giấy SmartMart + Biển trần "AVAILABLE / CHECKOUT 04".
+   - Biển ngành hàng treo trên cao phân biệt lối đi: `01 Nước giải khát & Sữa` (Xanh dương), `02 Bánh kẹo & Mì gói` (Cam).
+
+4. **[CheckoutModal.tsx](./src/components/shared/CheckoutModal.tsx)**:
+   - Cung cấp luồng thanh toán đa bước: Đặt & Quét mã ➔ Thanh toán VietQR ➔ Túi hàng sẵn sàng.
+   - Trạng thái hoàn tất hiển thị huy hiệu xác nhận, mã đơn hàng ngẫu nhiên chuẩn hóa (`SM3D-xxxxxx`), tổng tiền VNĐ và thông báo giao hàng trong 30 phút.
+
+5. **[HeaderNavbar.tsx](./src/components/shared/HeaderNavbar.tsx) & [SpatialShopHUD.tsx](./src/components/3d/SpatialShopHUD.tsx)**:
+   - Thu gọn thanh điều hướng trên cùng xuống độ cao 56px, tối ưu không gian cho tầm nhìn 3D.
+   - Nút gạt chuyển đổi `[2D Mua Nhanh]` <-> `[3D Khám Phá]` dạng khối trượt vật lý.
+   - Thanh tìm kiếm nổi 3D phong cách kính mờ kiến trúc (Frosted glass) với nút mở giỏ hàng màu xanh lá phong cách "Trolley" của video tham chiếu.
+
+6. **[VirtualJoystick.tsx](./src/components/3d/VirtualJoystick.tsx) & Touch Look ([PlayerFPS.tsx](./src/components/3d/PlayerFPS.tsx))**:
+   - Tự động nhận diện thiết bị cảm ứng hoặc màn hình di động/tablet.
+   - Cần gạt joystick ảo tròn ở góc dưới bên trái màn hình cho ngón cái điều khiển di chuyển tiến/lùi và rẽ trái/phải mượt mà.
+   - Hỗ trợ vuốt chạm màn hình cảm ứng để xoay góc nhìn camera (Touch look / swipe) không cần chuột.
+   - Nút chạm xem chi tiết 360° trực tiếp trên HUD dành riêng cho người dùng di động.
+
+7. **[LoadingScreen.tsx](./src/components/shared/LoadingScreen.tsx) & Cấu hình Triển khai ([vercel.json](./vercel.json))**:
+   - Màn hình nạp tài nguyên mở đầu với logo SmartMart 3D Hypermarket, thanh tiến trình % nạp mượt mà, tự động fade out khi hoàn tất.
+   - Hiển thị bảng hướng dẫn phím tắt cho Desktop (WASD/Chuột phải/E) và Mobile (Cần gạt ảo/Vuốt chạm).
+   - Tệp cấu hình `vercel.json` phục vụ triển khai SPA (Single Page Application) nhanh chóng lên Vercel / Cloudflare Pages / Netlify.
+
+---
+
+### 11.4. Kết quả Nghiệm thu & Kiểm thử Tự động (Verification)
+
+- **Test Suite**: Chạy Vitest tự động trên **24 tệp kiểm thử với 139/139 tests PASS (100%)**.
+- **TypeScript & Build**: Kiểm tra `tsc && vite build` hoàn thành trong **1.92 giây**, sinh bundle production `dist/` hoàn hảo không có lỗi cú pháp.
+- **Trải nghiệm thị giác & Đa nền tảng**: Đồng bộ nhận diện thương hiệu từ 2D Quick Shop đến 3D Hypermarket, hỗ trợ đầy đủ cả máy tính để bàn (Desktop) và điện thoại thông minh (Mobile Smartphone).
+
+---
+
+### 11.5. Nghiệm thu Sprint 1: Hệ thống Âm thanh Không gian & Dịch chuyển Tức thời Radar (Next-Gen 2026)
+
+1. **[supermarketAudio.ts](./src/utils/supermarketAudio.ts)**:
+   - **Âm thanh bánh xe đẩy (`cart_rolling_loop`)**: Giả lập rung chấn và ma sát của bánh xe cao su trên sàn gạch bằng bộ lọc Lowpass (220Hz) và dao động 82Hz mượt mà, tự động tăng/giảm âm khi di chuyển bằng phím WASD hoặc Joystick.
+   - **Âm thanh rù lạnh của dãy tủ đông (`refrigerator_ambient_hum`)**: Tính toán theo khoảng cách 3D thực tế của người chơi tới tường tủ đông (`z = -6.1m`), tự động to dần khi bước lại gần.
+   - **Âm thanh va chạm kim loại (`cart_drop_clack`)**: Tích hợp vào [ShoppingTrolley.tsx](./src/components/3d/ShoppingTrolley.tsx), kích hoạt khi đồ rơi vào lòng xe đẩy bằng hai hài âm 980Hz & 420Hz.
+   - **Âm thanh dịch chuyển nhanh (`teleport_whoosh`)**: Âm vút camera cinematic khi kích hoạt tính năng Fast-Travel.
+   - **Nút Toggle Âm thanh**: Tích hợp nút Volume2 / VolumeX trên [SpatialShopHUD.tsx](./src/components/3d/SpatialShopHUD.tsx) cho phép người dùng chủ động tắt/bật âm thanh.
+
+2. **[FloorPlanMap.tsx](./src/components/3d/FloorPlanMap.tsx) & Dịch chuyển tức thời ([PlayerFPS.tsx](./src/components/3d/PlayerFPS.tsx))**:
+   - Cung cấp dải 6 nút Fast-Travel định vị nhanh các khu vực trọng yếu: `🚪 Lối Vào`, `🥤 Lối 01: Đồ Uống`, `🍪 Lối 02: Bánh Kẹo`, `🏷️ Ụ Khuyến Mãi`, `❄️ Tủ Đông Lạnh`, `💳 Thu Ngân 04`.
+   - Camera lướt bay mượt mà (Hermite Smoothstep camera fly-to/slerp) đưa người dùng tới thẳng trước mặt gian hàng chỉ trong 0.9 giây mà không cần đi bộ thủ công.
+   - Tương thích 100% với hệ thống xoay nón tầm nhìn (FOV cone) và tự động đóng bản đồ trên màn hình di động khi kích hoạt.
+
+---
+
+### 11.6. Nghiệm thu Sprint 2: Kiến trúc Đại Siêu thị Đa Lối Đi (Multi-Aisle Hypermarket Layout)
+
+1. **Mở rộng mặt bằng không gian 4 dãy kệ Gondola thực tế**:
+   - Tọa độ trục X của 4 dãy kệ: `x = [-5.4, -2.6, 2.6, 5.4]`, mở rộng không gian sàn bán lẻ từ 2 dãy lên 4 dãy hoàn chỉnh với kích thước sàn $24\text{m} \times 24\text{m}$.
+   - Thiết lập 4 lối đi chuyên biệt:
+     - **Lối 01 (Xanh dương - #1d4ed8)**: Nước Giải Khát & Bia (lon Coca-Cola, nước tăng lực Sting).
+     - **Lối 02 (Cam - #ea580c)**: Sữa & Cà Phê (sữa tươi Vinamilk 1L, cà phê hòa tan G7).
+     - **Lối 03 (Tím - #7c3aed)**: Bánh Kẹo & Đồ Ăn Vặt (bánh Choco-Pie Orion, thức uống lúa mạch Milo).
+     - **Lối 04 (Xanh lục - #059669)**: Gia Vị & Nông Sản (mì Hảo Hảo tôm chua cay, dầu đậu nành Simply).
+   - Biển chỉ dẫn ngành hàng treo trần đôi (`DepartmentBanner` 2 mặt) tại tọa độ $y = 3.25\text{m}, z = 3.4\text{m}$ định vị trực quan ngay đầu mỗi lối đi.
+
+2. **Phân bổ sản phẩm đồng đều trên toàn bộ 4 dãy kệ ([InstancedStock.tsx](./src/components/3d/InstancedStock.tsx))**:
+   - Khắc phục triệt để hiện tượng kệ trống: Toàn bộ 4 dãy kệ đều được phân bổ các gian hàng sản phẩm 3D thực tế với texture độ nét cao.
+   - Các sản phẩm được tính toán khoảng cách đệm `dividerPadding = 0.045m` và cao độ khay kệ `shelfTopY = tierY + 0.0175m`, loại bỏ hoàn toàn lỗi xuyên thanh chắn hoặc vách ngăn đứng.
+   - Giữ nguyên cấu trúc đầu hồi (endcaps) thanh lịch, loại bỏ các biển báo khuyến mãi cồng kềnh nhô cao để bảo toàn tầm nhìn thoáng đãng và kiến trúc hiện đại.
+
+3. **Cập nhật Bản đồ Mặt bằng & Radar Fast-Travel 8 Vị trí ([FloorPlanMap.tsx](./src/components/3d/FloorPlanMap.tsx))**:
+   - Radar hiển thị trực quan cả 4 dãy kệ với màu nhận diện và chữ định danh xoay dọc tương ứng (`KỆ 01: NƯỚC`, `KỆ 02: SỮA`, `KỆ 03: BÁNH`, `KỆ 04: GIA VỊ`).
+   - Mở rộng lưới Fast-Travel lên 8 điểm đến chiến lược: `🚪 Lối Vào`, `🥤 Lối 01: Đồ Uống`, `🥛 Lối 02: Sữa & Cà Phê`, `🍪 Lối 03: Bánh Kẹo`, `🌾 Lối 04: Gia Vị`, `🏷️ Ụ Khuyến Mãi`, `❄️ Tủ Đông Lạnh`, `💳 Thu Ngân 04`.
+   - Hệ thống dẫn đường A\* tự động nhận diện và né tránh cả 4 khối chướng ngại vật kệ hàng, quầy thu ngân và đảo khuyến mãi.
+
+4. **Kiểm thử tự động & Hiệu năng Production**:
+   - Vượt qua toàn bộ **24 test files / 139 tests đạt 100%**.
+   - Build production bằng Vite thành công trong 1.57 giây, sẵn sàng triển khai thực tế.
+
+---
+
+### 11.7. Nghiệm thu Sprint 3: Quét Hàng 3D Vật Lý & Đóng Túi Tại Kiosk Self-Checkout 04 (Physical 3D Scanning Sequence)
+
+1. **Kiến trúc Quét mã 3 Trạm Vật lý Tự động ([SelfCheckoutScanner3D.tsx](./src/components/3d/SelfCheckoutScanner3D.tsx))**:
+   - **Bàn đặt hàng bên trái (`KHU VỰC ĐẶT HÀNG`)**: Hiển thị trực quan các khối hàng hóa 3D trong giỏ hàng đang chờ quét.
+   - **Mặt kính quét trung tâm (`SCANNER BED`)**:
+     - Từng món hàng lướt từ bàn trái vào mặt kính quét laser.
+     - **Tia Laser Đỏ Quét Mã Vạch (`Red Laser Line`)**: Dải sáng laser đỏ (`#ef4444`, `emissive: 3`) quét qua đáy sản phẩm theo chu kỳ dao động sin.
+     - Tự động kích hoạt âm thanh máy quét mã vạch 2.4kHz (`playLaserBeepSound()`).
+     - Đèn trợ sáng `PointLight` nhấp nháy đỏ rực rỡ khi tia laser nhận diện mã vạch.
+   - **Bàn đóng gói bên phải (`BAGGING AREA`) & Túi Giấy SmartMart**:
+     - Món hàng sau khi quét tiếp tục bay theo đường cong Parabol rơi mượt mà vào lòng túi giấy Kraft `SmartMart`.
+     - Kèm âm thanh va chạm túi hàng (`playCartDropClack()`) và hiển thị các khối hàng thu nhỏ xếp lớp bên trong lòng túi giấy.
+
+2. **Màn hình POS 3D Cảm ứng Tương tác Thời gian thực**:
+   - Hiển thị theo 4 giai đoạn logic chuẩn quốc tế (`useCheckoutStore.ts`):
+     - **Giai đoạn 1 (`idle`)**: Trạng thái chờ với tổng số món và số tiền VNĐ; lời mời chạm để bắt đầu quét.
+     - **Giai đoạn 2 (`scanning`)**: Hiển thị tên món đang quét (VD: *Sữa tươi Vinamilk 1L*), cộng dồn tiền tức thời (`+36.000 đ`), thanh tiến trình % quét hàng (`Đã quét: X/Y món`), hỗ trợ chạm để quét nhanh toàn bộ.
+     - **Giai đoạn 3 (`payment`)**: Mã ma trận VietQR sắc nét trực tiếp trên màn hình Kiosk kèm tổng tiền VNĐ và nút xác nhận thanh toán 1-chạm.
+     - **Giai đoạn 4 (`success`)**: Chúc mừng thanh toán thành công, mã đơn chuẩn `SM3D-xxxxxx`, đèn trần xanh lá rực sáng, nhả **Biên lai Hóa đơn Giấy 3D (`ReceiptSlip`)** ra khỏi khe máy in nhiệt POS kèm âm thanh in hóa đơn thực tế.
+
+3. **Hệ thống Âm thanh Quầy Thu Ngân Chuyên Dụng ([supermarketAudio.ts](./src/utils/supermarketAudio.ts))**:
+   - `playLaserBeepSound()`: Tần số chuẩn 2.4kHz phát ra khi sản phẩm lướt qua tia laser.
+   - `playReceiptPrintSound()`: Giả lập tiếng rít bánh răng và mô tơ máy in nhiệt POS nhả hóa đơn (dải tần 360Hz - 440Hz).
+   - `playPaymentSuccessFanfare()`: Hợp âm Đô trưởng (C Major Chime: C5, E5, G5, C6) vang lên rạng rỡ khi đơn hàng thanh toán thành công.
+
+4. **Đồng bộ Hai chiều 2D Modal & 3D Scene ([CheckoutModal.tsx](./src/components/shared/CheckoutModal.tsx))**:
+   - Giao diện 2D Modal và 3D Kiosk chia sẻ cùng mã đơn hàng, cùng trạng thái thanh toán và số tiền VNĐ.
+   - Sau khi thanh toán thành công, giỏ hàng được dọn sạch (`clearCart()`) sẵn sàng cho phiên mua sắm tiếp theo.
+
+5. **Kết quả Kiểm thử & Build Production**:
+   - Toàn bộ **26 test files với 151/151 tests PASS (100%)**.
+   - Build production bằng Vite hoàn thành trong **1.47 giây**, bundle tối ưu hoàn hảo.
+

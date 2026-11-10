@@ -146,7 +146,7 @@ export const CartDrawer: React.FC<Props> = ({ isOpen, onClose }) => {
               </div>
               <div className="flex justify-between items-baseline pt-2 border-t border-slate-200 text-slate-900">
                 <span className="font-bold text-sm">Tổng cộng thanh toán:</span>
-                <span className="font-black text-xl text-blue-600">
+                <span className="font-black text-xl text-orange-600 tabular-nums">
                   {`${totalVND.toLocaleString("vi-VN")} đ`}
                 </span>
               </div>
@@ -154,7 +154,7 @@ export const CartDrawer: React.FC<Props> = ({ isOpen, onClose }) => {
 
             <button
               onClick={handleCheckout}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 text-sm transition-all active:scale-[0.98]"
+              className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold py-3.5 rounded-xl shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 text-sm transition-all active:scale-[0.98]"
             >
               <span>Thanh Toán Siêu Tốc (VietQR)</span>
               <ArrowRight className="w-4 h-4" />

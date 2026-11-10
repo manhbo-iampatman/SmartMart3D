@@ -9,6 +9,12 @@ export interface Product {
   color: string; // Màu tượng trưng trong 3D
   dimensions: [number, number, number]; // [rộng, cao, sâu] tính theo mét
   has3D: boolean;
+  labelInfo?: {
+    ingredients: string;
+    storage: string;
+    expiry: string;
+    isDemo: boolean;
+  };
   shelfLocation?: {
     aisle: string;
     shelfTier: number;

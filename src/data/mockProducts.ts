@@ -1,8 +1,10 @@
 import { Product } from "../types";
+import { MOCK_PRODUCT_LABELS } from "./productLabelInfo";
 
 export const MOCK_PRODUCTS: Product[] = [
   {
     id: "prod-milk-vinamilk",
+    labelInfo: MOCK_PRODUCT_LABELS["prod-milk-vinamilk"],
     name: "Sữa Tươi Tiệt Trùng Vinamilk 100% 1L",
     price: 36000,
     category: "Sữa & Sản Phẩm Từ Sữa",
@@ -13,13 +15,14 @@ export const MOCK_PRODUCTS: Product[] = [
     dimensions: [0.18, 0.28, 0.1],
     has3D: true,
     shelfLocation: {
-      aisle: "Aisle 01 (Trái)",
+      aisle: "Aisle 02 (Sữa & Cà phê)",
       shelfTier: 2,
       worldPos: [-2.1, 1.2, -1.8],
     },
   },
   {
     id: "prod-noodle-haohao",
+    labelInfo: MOCK_PRODUCT_LABELS["prod-noodle-haohao"],
     name: "Mì Tôm Chua Cay Hảo Hảo 75g",
     price: 4500,
     category: "Mì & Đồ Khô",
@@ -30,13 +33,14 @@ export const MOCK_PRODUCTS: Product[] = [
     dimensions: [0.15, 0.12, 0.05],
     has3D: true,
     shelfLocation: {
-      aisle: "Aisle 01 (Trái)",
+      aisle: "Aisle 04 (Gia vị & Đồ khô)",
       shelfTier: 1,
-      worldPos: [-2.1, 0.65, -0.6],
+      worldPos: [4.9, 0.65, -0.6],
     },
   },
   {
     id: "prod-drink-coca",
+    labelInfo: MOCK_PRODUCT_LABELS["prod-drink-coca"],
     name: "Nước Ngọt Coca-Cola Vị Nguyên Bản",
     price: 11000,
     category: "Nước Giải Khát",
@@ -47,13 +51,14 @@ export const MOCK_PRODUCTS: Product[] = [
     dimensions: [0.08, 0.15, 0.08],
     has3D: true,
     shelfLocation: {
-      aisle: "Aisle 01 (Trái)",
+      aisle: "Aisle 01 (Nước giải khát & Bia)",
       shelfTier: 3,
-      worldPos: [-2.1, 1.75, 0.6],
+      worldPos: [-4.9, 1.75, -0.6],
     },
   },
   {
     id: "prod-coffee-g7",
+    labelInfo: MOCK_PRODUCT_LABELS["prod-coffee-g7"],
     name: "Cà Phê Hòa Tan G7 3in1 Trung Nguyên",
     price: 58000,
     category: "Cà Phê & Trà",
@@ -64,13 +69,14 @@ export const MOCK_PRODUCTS: Product[] = [
     dimensions: [0.16, 0.22, 0.08],
     has3D: true,
     shelfLocation: {
-      aisle: "Aisle 01 (Trái)",
+      aisle: "Aisle 02 (Sữa & Cà phê)",
       shelfTier: 2,
       worldPos: [-2.1, 1.2, 1.8],
     },
   },
   {
     id: "prod-snack-chocopie",
+    labelInfo: MOCK_PRODUCT_LABELS["prod-snack-chocopie"],
     name: "Bánh Choco-Pie Orion Tình 360g",
     price: 62000,
     category: "Bánh Kẹo & Snack",
@@ -81,13 +87,14 @@ export const MOCK_PRODUCTS: Product[] = [
     dimensions: [0.24, 0.18, 0.09],
     has3D: true,
     shelfLocation: {
-      aisle: "Aisle 01 (Phải)",
+      aisle: "Aisle 03 (Bánh kẹo & Mì gói)",
       shelfTier: 2,
       worldPos: [2.1, 1.2, -1.8],
     },
   },
   {
     id: "prod-drink-milo",
+    labelInfo: MOCK_PRODUCT_LABELS["prod-drink-milo"],
     name: "Thức Uống Lúa Mạch Nestlé Milo Ít Đường",
     price: 32000,
     category: "Sữa & Sản Phẩm Từ Sữa",
@@ -98,13 +105,14 @@ export const MOCK_PRODUCTS: Product[] = [
     dimensions: [0.16, 0.14, 0.08],
     has3D: true,
     shelfLocation: {
-      aisle: "Aisle 01 (Phải)",
+      aisle: "Aisle 03 (Bánh kẹo & Mì gói)",
       shelfTier: 3,
       worldPos: [2.1, 1.75, -0.6],
     },
   },
   {
     id: "prod-drink-sting",
+    labelInfo: MOCK_PRODUCT_LABELS["prod-drink-sting"],
     name: "Nước Tăng Lực Sting Dâu Tây Đỏ",
     price: 11000,
     category: "Nước Giải Khát",
@@ -115,13 +123,14 @@ export const MOCK_PRODUCTS: Product[] = [
     dimensions: [0.08, 0.22, 0.08],
     has3D: true,
     shelfLocation: {
-      aisle: "Aisle 01 (Phải)",
+      aisle: "Aisle 01 (Nước giải khát & Bia)",
       shelfTier: 1,
-      worldPos: [2.1, 0.65, 0.6],
+      worldPos: [-4.9, 0.65, 0.6],
     },
   },
   {
     id: "prod-oil-simply",
+    labelInfo: MOCK_PRODUCT_LABELS["prod-oil-simply"],
     name: "Dầu Đậu Nành Tinh Luyện Simply 1L",
     price: 68000,
     category: "Gia Vị & Nấu Ăn",
@@ -132,9 +141,9 @@ export const MOCK_PRODUCTS: Product[] = [
     dimensions: [0.1, 0.28, 0.1],
     has3D: true,
     shelfLocation: {
-      aisle: "Aisle 01 (Phải)",
+      aisle: "Aisle 04 (Gia vị & Đồ khô)",
       shelfTier: 1,
-      worldPos: [2.1, 0.65, 1.8],
+      worldPos: [4.9, 0.65, 1.8],
     },
   },
   // Các sản phẩm chỉ có ở chế độ 2D (chưa cần làm 3D để kiểm chứng tính năng Hybrid)

@@ -2,6 +2,7 @@ import React from "react";
 import { HeaderNavbar } from "./components/shared/HeaderNavbar";
 import { CartDrawer } from "./components/shared/CartDrawer";
 import { CheckoutModal } from "./components/shared/CheckoutModal";
+import { CartFeedback } from "./components/shared/CartFeedback";
 import { QuickShopView } from "./components/2d/QuickShopView";
 import { Scene3D } from "./components/3d/Scene3D";
 import { ProductInspector3D } from "./components/3d/ProductInspector3D";
@@ -36,6 +37,7 @@ export const App: React.FC = () => {
 
       {/* 5. Modal quầy thanh toán tự động VietQR */}
       <CheckoutModal />
+      <CartFeedback />
     </div>
   );
 };
