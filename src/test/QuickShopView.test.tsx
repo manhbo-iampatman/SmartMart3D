@@ -30,9 +30,15 @@ describe("QuickShopView - Màn hình Mua Nhanh 2D (Phase 1)", () => {
     expect(useAppStore.getState().mode).toBe("3D");
   });
 
-  it("hiển thị danh sách 12 sản phẩm mẫu ở trạng thái mặc định", () => {
+  it("hiển thị danh sách đầy đủ 24 sản phẩm hợp nhất (12 Tạp hóa + 6 Nông sản + 6 Thời trang)", () => {
     render(<QuickShopView />);
-    expect(screen.getByText("Danh Sách Nhu Yếu Phẩm (12)")).toBeInTheDocument();
+    expect(screen.getByText("Danh Sách Nhu Yếu Phẩm (24)")).toBeInTheDocument();
+
+    // Kiểm tra lọc nhanh ngành hàng Thời Trang & Phụ Kiện
+    const apparelBtn = screen.getByRole("button", { name: "Thời Trang & Phụ Kiện" });
+    fireEvent.click(apparelBtn);
+    expect(screen.getByText("Danh Sách Nhu Yếu Phẩm (6)")).toBeInTheDocument();
+    expect(screen.getByText("Giày Thể Thao Ultralite Running (Xanh Cobalt)")).toBeInTheDocument();
   });
 
   it("lọc sản phẩm theo danh mục khi click vào nút ngành hàng", () => {

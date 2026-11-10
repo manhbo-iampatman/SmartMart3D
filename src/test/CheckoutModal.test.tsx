@@ -4,6 +4,7 @@ import { CheckoutModal } from "../components/shared/CheckoutModal";
 import { MOCK_PRODUCTS } from "../data/mockProducts";
 import { useAppStore } from "../stores/useAppStore";
 import { useCartStore } from "../stores/useCartStore";
+import { useCheckoutStore } from "../stores/useCheckoutStore";
 
 const haoHao = MOCK_PRODUCTS.find(
   (product) => product.id === "prod-noodle-haohao"
@@ -81,5 +82,33 @@ describe("CheckoutModal - luồng thanh toán", () => {
 
     expect(useCartStore.getState().getTotalItems()).toBe(0);
     expect(useAppStore.getState().isCheckoutOpen).toBe(false);
+  });
+
+  it("đồng bộ 4 bước (Giỏ hàng -> Quét mã -> Thanh toán -> Hoàn tất) cùng activeKioskId & orderCode với Kiosk 3D", () => {
+    act(() => {
+      useCheckoutStore.getState().resetCheckout();
+      useCartStore.getState().addItem(haoHao);
+      useCheckoutStore.getState().setActiveKioskId("SCO-04");
+      useCheckoutStore.getState().startCheckout();
+      useAppStore.getState().setIsCheckoutOpen(true);
+    });
+    render(<CheckoutModal />);
+
+    // Đang ở bước 2: Quét mã tại Kiosk SCO-04
+    expect(screen.getByText("Self-Checkout SCO-04")).toBeInTheDocument();
+    expect(screen.getByText(/Kiosk đang quét từng sản phẩm/i)).toBeInTheDocument();
+    const sharedCode = useCheckoutStore.getState().orderCode;
+    expect(screen.getByText(sharedCode)).toBeInTheDocument();
+
+    // Chuyển sang bước 3: Thanh toán -> giữ nguyên mã đơn từ useCheckoutStore
+    fireEvent.click(screen.getByRole("button", { name: /chuyển sang bước thanh toán/i }));
+    expect(useCheckoutStore.getState().phase).toBe("payment");
+    expect(screen.getByText(sharedCode)).toBeInTheDocument();
+
+    // Xác nhận thanh toán -> Bước 4: Hoàn tất
+    fireEvent.click(screen.getByRole("button", { name: /xác nhận đặt hàng/i }));
+    expect(useCheckoutStore.getState().phase).toBe("success");
+    expect(screen.getByText("Thanh Toán Thành Công!")).toBeInTheDocument();
+    expect(screen.getByText(sharedCode)).toBeInTheDocument();
   });
 });

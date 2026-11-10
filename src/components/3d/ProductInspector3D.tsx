@@ -5,7 +5,7 @@ import { useCartStore } from "../../stores/useCartStore";
 import { useFeedbackStore } from "../../stores/useFeedbackStore";
 import { playCartSound } from "../../utils/cartSound";
 import { ProductPreview3D } from "./ProductPreview3D";
-import { MOCK_PRODUCTS } from "../../data/mockProducts";
+import { ALL_PRODUCTS } from "../../data/catalog";
 import type { Product } from "../../types";
 
 export const ProductInspector3D: React.FC = () => {
@@ -22,9 +22,9 @@ const InspectorSession: React.FC<{ product: Product }> = ({ product: inspectingP
   const [quantity, setQuantity] = useState(1);
   const closeButton = useRef<HTMLButtonElement>(null);
 
-  // Danh sách sản phẩm gợi ý mua kèm (Cross-selling theo video tham chiếu)
+  // Danh sách sản phẩm gợi ý mua kèm (Cross-selling theo danh mục hợp nhất)
   const crossSellProducts = useMemo(() => {
-    return MOCK_PRODUCTS
+    return ALL_PRODUCTS
       .filter((p) => p.id !== inspectingProduct.id)
       .slice(0, 3);
   }, [inspectingProduct.id]);

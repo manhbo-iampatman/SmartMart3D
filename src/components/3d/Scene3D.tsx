@@ -1,12 +1,18 @@
 import React, { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { ContactShadows } from "@react-three/drei";
+import * as THREE from "three";
 import { PlayerFPS } from "./PlayerFPS";
 import { AisleGondola } from "./AisleGondola";
 import { InstancedStock } from "./InstancedStock";
 import { NavigationGuide } from "./NavigationGuide";
 import { SpatialShopHUD } from "./SpatialShopHUD";
 import { StoreFixtures } from "./StoreFixtures";
+import { SupermarketStructure } from "./SupermarketStructure";
+import { ProduceSection } from "./ProduceSection";
+import { ApparelSection } from "./ApparelSection";
+import { CheckoutBank } from "./CheckoutBank";
+import { CartCorral } from "./CartCorral";
 import { ProductInteraction } from "./ProductInteraction";
 import { ShoppingTrolley } from "./ShoppingTrolley";
 import { InteractionHUD } from "./InteractionHUD";
@@ -15,88 +21,50 @@ import { LoadingScreen } from "../shared/LoadingScreen";
 import { useAppStore } from "../../stores/useAppStore";
 import { LayoutGrid } from "lucide-react";
 
-// Trần nhà siêu thị với các thanh đèn LED dài
-const SupermarketCeiling: React.FC = () => {
-  const lightPositions = [-3, -1, 1, 3];
-  return (
-    <group position={[0, 4.2, 0]}>
-      {/* Trần thạch cao */}
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[20, 20]} />
-        <meshStandardMaterial color="#0f172a" roughness={0.8} />
-      </mesh>
-
-      {/* Dãy đèn tuýp LED dài */}
-      {lightPositions.map((z, idx) => (
-        <group key={idx} position={[0, -0.05, z]}>
-          <mesh>
-            <boxGeometry args={[12, 0.08, 0.25]} />
-            <meshStandardMaterial
-              color="#ffffff"
-              emissive="#ffffff"
-              emissiveIntensity={2.5}
-            />
-          </mesh>
-          <pointLight intensity={1.5} distance={7} decay={2} color="#f8fafc" />
-        </group>
-      ))}
-    </group>
-  );
-};
-
-// Sàn gạch siêu thị sáng bóng
-const SupermarketFloor: React.FC = () => {
-  return (
-    <group>
-      {/* Sàn chính */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[24, 24]} />
-        <meshStandardMaterial
-          color="#e2e8f0"
-          roughness={0.15}
-          metalness={0.05}
-        />
-      </mesh>
-
-      {/* Vạch sơn phân làn lối đi giữa */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]}>
-        <planeGeometry args={[2.8, 14]} />
-        <meshStandardMaterial
-          color="#f1f5f9"
-          roughness={0.3}
-        />
-      </mesh>
-    </group>
-  );
-};
-
 export const Scene3D: React.FC = () => {
   const setMode = useAppStore((state) => state.setMode);
 
   return (
-    <div className="w-full h-full relative select-none bg-slate-950">
+    <div className="w-full h-full relative select-none bg-hyper-surface">
       <Canvas
+        dpr={[1, 1.8]}
         camera={{ position: [0, 1.65, 4.5], fov: 65 }}
-        shadows="percentage"
+        shadows="soft"
+        gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
         className="w-full h-full cursor-crosshair"
       >
+        <color attach="background" args={["#f1f5f9"]} />
         <Suspense fallback={null}>
-          {/* Ánh sáng */}
-          <ambientLight intensity={0.85} color="#ffffff" />
+          {/* Ánh sáng tổng thể đại siêu thị kiến trúc sáng PBR */}
+          <hemisphereLight args={["#ffffff", "#e2e8f0", 0.55]} />
+          <ambientLight intensity={0.45} color="#ffffff" />
           <directionalLight
-            position={[5, 8, 5]}
-            intensity={1.2}
+            position={[10, 18, 12]}
+            intensity={1.35}
             castShadow
-            shadow-mapSize={[1024, 1024]}
+            shadow-mapSize={[2048, 2048]}
+            shadow-bias={-0.0004}
+            shadow-normalBias={0.035}
+            shadow-camera-left={-26}
+            shadow-camera-right={26}
+            shadow-camera-top={30}
+            shadow-camera-bottom={-30}
+            shadow-camera-near={1}
+            shadow-camera-far={65}
           />
 
           {/* Điều khiển FPS */}
           <PlayerFPS />
 
-          {/* Môi trường siêu thị */}
-          <SupermarketFloor />
-          <SupermarketCeiling />
+          {/* Vỏ công trình kiến trúc đại siêu thị 40m x 54m (Phase 1) */}
+          <SupermarketStructure />
+
+          {/* Kệ hàng & Nội thất mua sắm */}
           <AisleGondola />
+          <ProduceSection />
+          <ApparelSection />
+          <CheckoutBank />
+          <CartCorral />
           <InstancedStock />
           <StoreFixtures />
           <NavigationGuide />
@@ -106,9 +74,11 @@ export const Scene3D: React.FC = () => {
           <ContactShadows
             position={[0, 0.01, 0]}
             opacity={0.4}
-            scale={20}
+            scale={40}
             blur={1.5}
             far={4}
+            frames={1}
+            resolution={256}
           />
         </Suspense>
       </Canvas>
@@ -119,7 +89,7 @@ export const Scene3D: React.FC = () => {
       <LoadingScreen />
       <button
         onClick={() => setMode("2D")}
-        className="absolute right-4 bottom-16 sm:bottom-4 z-20 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 shadow-xl flex items-center gap-2 text-xs"
+        className="absolute right-4 bottom-4 z-20 rounded-xl bg-hyper-primary hover:bg-hyper-primary-hover text-white font-bold px-3.5 py-2.5 shadow-xl flex items-center gap-2 text-xs transition-colors"
       >
         <LayoutGrid className="w-4 h-4" />
         <span>Chuyển Sang Mua Nhanh (2D)</span>

@@ -1,8 +1,10 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useLayoutEffect, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useCartStore } from "../../stores/useCartStore";
 import { playCartDropClack } from "../../utils/supermarketAudio";
+import { getWireMeshTexture } from "../../utils/textureGenerator";
+import { applyMatricesToInstancedMesh } from "../../utils/instancingHelper";
 
 /**
  * Xe đẩy siêu thị 3D theo góc nhìn người thứ nhất (First-Person Trolley)
@@ -31,6 +33,125 @@ export const ShoppingTrolley: React.FC = () => {
     progress: 0,
     color: "#ff5400",
   });
+
+  const solidRef = useRef<THREE.InstancedMesh>(null);
+  const polesRef = useRef<THREE.InstancedMesh>(null);
+  const basketRef = useRef<THREE.InstancedMesh>(null);
+  const cartItemsRef = useRef<THREE.InstancedMesh>(null);
+
+  const unitBox = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
+  const unitCyl = useMemo(() => new THREE.CylinderGeometry(0.5, 0.5, 1, 12), []);
+  const wireTex = useMemo(() => getWireMeshTexture(), []);
+
+  const mats = useMemo(() => ({
+    solidVertex: new THREE.MeshStandardMaterial({ color: "#ffffff", metalness: 0.55, roughness: 0.25 }),
+    wireBasket: new THREE.MeshStandardMaterial({
+      ...(wireTex.image ? { map: wireTex } : {}),
+      color: "#cbd5e1",
+      metalness: 0.85,
+      roughness: 0.2,
+      alphaTest: wireTex.image ? 0.45 : 0,
+      side: THREE.DoubleSide,
+    }),
+    itemVertex: new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.3, metalness: 0.1 }),
+  }), [wireTex]);
+
+  const staticBatches = useMemo(() => {
+    const solids: THREE.Matrix4[] = [];
+    const solidColors: THREE.Color[] = [];
+    const poles: THREE.Matrix4[] = [];
+    const poleColors: THREE.Color[] = [];
+    const basketFaces: THREE.Matrix4[] = [];
+
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    const s = new THREE.Vector3();
+    const e = new THREE.Euler();
+    const pushColored = (
+      arr: THREE.Matrix4[],
+      colors: THREE.Color[],
+      hex: string,
+      x: number,
+      y: number,
+      z: number,
+      sx: number,
+      sy: number,
+      sz: number,
+      rx = 0,
+      ry = 0,
+      rz = 0
+    ) => {
+      e.set(rx, ry, rz);
+      q.setFromEuler(e);
+      p.set(x, y, z);
+      s.set(sx, sy, sz);
+      arr.push(new THREE.Matrix4().compose(p, q, s));
+      colors.push(new THREE.Color(hex));
+    };
+
+    // Khung gầm, 4 bánh xe, viền miệng giỏ, 2 nẹp tay cầm
+    pushColored(solids, solidColors, "#94a3b8", 0, 0.12, 0, 0.48, 0.04, 0.62);
+    for (const [wx, wz] of [[-0.22, -0.26], [0.22, -0.26], [-0.2, 0.26], [0.2, 0.26]]) {
+      pushColored(solids, solidColors, "#334155", wx, 0.06, wz, 0.03, 0.09, 0.09);
+      pushColored(poles, poleColors, "#cbd5e1", wx, 0.1, wz, 0.024, 0.05, 0.024);
+    }
+    for (const [sx, sy, sz] of [[-0.22, 0.35, -0.22], [0.22, 0.35, -0.22], [-0.24, 0.45, 0.25], [0.24, 0.45, 0.25]]) {
+      pushColored(poles, poleColors, "#e2e8f0", sx, sy, sz, 0.024, 0.65, 0.024);
+    }
+    pushColored(solids, solidColors, "#f1f5f9", 0, 0.82, 0, 0.52, 0.025, 0.68);
+    pushColored(poles, poleColors, "#ff5400", 0, 0.94, 0.42, 0.048, 0.54, 0.048, 0, 0, Math.PI / 2);
+    for (const hx of [-0.27, 0.27]) {
+      pushColored(solids, solidColors, "#64748b", hx, 0.86, 0.36, 0.02, 0.2, 0.03, 0.4, 0, 0);
+    }
+
+    // 5 mặt lưới rổ kim loại hợp nhất thành 1 InstancedMesh
+    const dummyColors: THREE.Color[] = [];
+    pushColored(basketFaces, dummyColors, "#cbd5e1", 0, 0.46, 0, 0.5, 0.02, 0.66);
+    pushColored(basketFaces, dummyColors, "#cbd5e1", -0.25, 0.64, 0, 0.02, 0.36, 0.66);
+    pushColored(basketFaces, dummyColors, "#cbd5e1", 0.25, 0.64, 0, 0.02, 0.36, 0.66);
+    pushColored(basketFaces, dummyColors, "#cbd5e1", 0, 0.58, -0.33, 0.5, 0.24, 0.02);
+    pushColored(basketFaces, dummyColors, "#cbd5e1", 0, 0.7, 0.33, 0.5, 0.48, 0.02);
+
+    return { solids, solidColors, poles, poleColors, basketFaces };
+  }, []);
+
+  useLayoutEffect(() => {
+    applyMatricesToInstancedMesh(solidRef.current, staticBatches.solids, 0, staticBatches.solidColors);
+    applyMatricesToInstancedMesh(polesRef.current, staticBatches.poles, 0, staticBatches.poleColors);
+    applyMatricesToInstancedMesh(basketRef.current, staticBatches.basketFaces);
+  }, [staticBatches]);
+
+  const cartItemBatch = useMemo(() => {
+    const visibleItems = items.slice(0, 6);
+    const matrices: THREE.Matrix4[] = [];
+    const colors: THREE.Color[] = [];
+    const q = new THREE.Quaternion();
+    const s = new THREE.Vector3(0.16, 0.18, 0.14);
+    visibleItems.forEach((item, index) => {
+      const col = index % 2;
+      const row = Math.floor(index / 2);
+      const px = (col - 0.5) * 0.22;
+      const pz = (row - 1) * 0.2;
+      matrices.push(new THREE.Matrix4().compose(new THREE.Vector3(px, 0.59, pz), q, s));
+      colors.push(new THREE.Color(item.product.color || (index % 2 === 0 ? "#ff5400" : "#2563eb")));
+    });
+    return { matrices, colors };
+  }, [items]);
+
+  useLayoutEffect(() => {
+    applyMatricesToInstancedMesh(cartItemsRef.current, cartItemBatch.matrices, 0, cartItemBatch.colors);
+  }, [cartItemBatch]);
+
+  // Vô hiệu hóa raycast trên toàn bộ lưới xe đẩy cá nhân để không che tia nhặt hàng hay bấm Kiosk
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!group || typeof group.traverse !== "function") return;
+    group.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        child.raycast = () => {};
+      }
+    });
+  }, [totalItems]);
 
   useEffect(() => {
     if (totalItems > previousTotal.current) {
@@ -96,136 +217,39 @@ export const ShoppingTrolley: React.FC = () => {
   const dropScale = THREE.MathUtils.lerp(1.35, 1.0, p);
 
   return (
-    <group ref={groupRef} name="first-person-shopping-trolley">
-      {/* 1. Khung gầm xe đẩy và 4 bánh xe */}
-      <group position={[0, 0.06, 0]}>
-        {/* Khung thép chữ U đỡ giỏ */}
-        <mesh position={[0, 0.06, 0]}>
-          <boxGeometry args={[0.48, 0.04, 0.62]} />
-          <meshStandardMaterial color="#94a3b8" metalness={0.85} roughness={0.2} />
-        </mesh>
+    <group
+      ref={groupRef}
+      name="first-person-shopping-trolley"
+      userData={{ ignoreProductRaycast: true }}
+    >
+      {/* 1. Toàn bộ khung gầm, bánh xe, cột chống, tay cầm & rổ lưới hợp nhất thành 3 InstancedMesh (Phase 6) */}
+      <instancedMesh ref={solidRef} args={[unitBox, mats.solidVertex, staticBatches.solids.length]} />
+      <instancedMesh ref={polesRef} args={[unitCyl, mats.solidVertex, staticBatches.poles.length]} />
+      <instancedMesh ref={basketRef} args={[unitBox, mats.wireBasket, staticBatches.basketFaces.length]} />
 
-        {/* 4 bánh xe xoay đa hướng */}
-        {[
-          [-0.22, -0.26],
-          [0.22, -0.26],
-          [-0.2, 0.26],
-          [0.2, 0.26],
-        ].map(([wx, wz], idx) => (
-          <group key={idx} position={[wx, 0, wz]}>
-            <mesh rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.045, 0.045, 0.03, 12]} />
-              <meshStandardMaterial color="#334155" roughness={0.6} />
-            </mesh>
-            <mesh position={[0, 0.04, 0]}>
-              <cylinderGeometry args={[0.012, 0.012, 0.05, 8]} />
-              <meshStandardMaterial color="#cbd5e1" metalness={0.9} />
-            </mesh>
-          </group>
-        ))}
-      </group>
-
-      {/* 2. Bốn cột chống kim loại nối lên giỏ hàng */}
-      <group>
-        {[
-          [-0.22, 0.35, -0.22],
-          [0.22, 0.35, -0.22],
-          [-0.24, 0.45, 0.25],
-          [0.24, 0.45, 0.25],
-        ].map(([sx, sy, sz], idx) => (
-          <mesh key={idx} position={[sx, sy, sz]}>
-            <cylinderGeometry args={[0.012, 0.012, 0.65, 8]} />
-            <meshStandardMaterial color="#e2e8f0" metalness={0.9} roughness={0.15} />
+      {/* 2. Animation món hàng đang bay theo đường cong vào giỏ (Drop Animation) */}
+      {dropAnim.active && (
+        <group position={[0, 0.62 + dropY, dropZ]} scale={dropScale}>
+          <mesh castShadow>
+            <boxGeometry args={[0.18, 0.2, 0.16]} />
+            <meshStandardMaterial
+              color={dropAnim.color}
+              emissive={dropAnim.color}
+              emissiveIntensity={0.25}
+              roughness={0.2}
+            />
           </mesh>
-        ))}
-      </group>
+        </group>
+      )}
 
-      {/* 3. Lòng giỏ hàng dạng lưới kim loại (Wire Mesh Basket) */}
-      <group position={[0, 0.62, 0]}>
-        {/* Đáy giỏ */}
-        <mesh position={[0, -0.16, 0]}>
-          <boxGeometry args={[0.5, 0.02, 0.66]} />
-          <meshStandardMaterial color="#cbd5e1" metalness={0.85} roughness={0.2} wireframe />
-        </mesh>
-        {/* Vách trái/phải */}
-        <mesh position={[-0.25, 0.02, 0]}>
-          <boxGeometry args={[0.02, 0.36, 0.66]} />
-          <meshStandardMaterial color="#cbd5e1" metalness={0.85} roughness={0.2} wireframe />
-        </mesh>
-        <mesh position={[0.25, 0.02, 0]}>
-          <boxGeometry args={[0.02, 0.36, 0.66]} />
-          <meshStandardMaterial color="#cbd5e1" metalness={0.85} roughness={0.2} wireframe />
-        </mesh>
-        {/* Vách trước (thấp hơn) */}
-        <mesh position={[0, -0.04, -0.33]}>
-          <boxGeometry args={[0.5, 0.24, 0.02]} />
-          <meshStandardMaterial color="#cbd5e1" metalness={0.85} roughness={0.2} wireframe />
-        </mesh>
-        {/* Vách sau (cao hơn về phía người cầm) */}
-        <mesh position={[0, 0.08, 0.33]}>
-          <boxGeometry args={[0.5, 0.48, 0.02]} />
-          <meshStandardMaterial color="#cbd5e1" metalness={0.85} roughness={0.2} wireframe />
-        </mesh>
-
-        {/* Viền kim loại bo quanh miệng giỏ */}
-        <mesh position={[0, 0.2, 0]}>
-          <boxGeometry args={[0.52, 0.025, 0.68]} />
-          <meshStandardMaterial color="#f1f5f9" metalness={0.95} roughness={0.1} />
-        </mesh>
-
-        {/* 4. Animation món hàng đang bay theo đường cong vào giỏ (Drop Animation) */}
-        {dropAnim.active && (
-          <group position={[0, dropY, dropZ]} scale={dropScale}>
-            <mesh castShadow>
-              <boxGeometry args={[0.18, 0.2, 0.16]} />
-              <meshStandardMaterial
-                color={dropAnim.color}
-                emissive={dropAnim.color}
-                emissiveIntensity={0.25}
-                roughness={0.2}
-              />
-            </mesh>
-          </group>
-        )}
-
-        {/* 5. Các món hàng thực tế xếp trong lòng xe đẩy khi nhặt hàng */}
-        {totalItems > 0 && (
-          <group position={[0, -0.08, 0]}>
-            {items.slice(0, 6).map((item, index) => {
-              const col = index % 2;
-              const row = Math.floor(index / 2);
-              const px = (col - 0.5) * 0.22;
-              const pz = (row - 1) * 0.2;
-              const itemColor = item.product.color || (index % 2 === 0 ? "#ff5400" : "#2563eb");
-
-              return (
-                <group key={item.product.id} position={[px, 0.05, pz]}>
-                  <mesh castShadow>
-                    <boxGeometry args={[0.16, 0.18, 0.14]} />
-                    <meshStandardMaterial color={itemColor} roughness={0.3} metalness={0.1} />
-                  </mesh>
-                </group>
-              );
-            })}
-          </group>
-        )}
-      </group>
-
-      {/* 6. Tay cầm đẩy xe siêu thị màu cam Persimmon cao cấp */}
-      <group position={[0, 0.94, 0.42]}>
-        {/* Thanh đệm tay cầm bọc cao su cam */}
-        <mesh rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.024, 0.024, 0.54, 16]} />
-          <meshStandardMaterial color="#ff5400" roughness={0.35} />
-        </mesh>
-        {/* Nẹp hai bên thanh đẩy nối vào khung */}
-        {[-0.27, 0.27].map((hx, idx) => (
-          <mesh key={idx} position={[hx, -0.08, -0.06]} rotation={[0.4, 0, 0]}>
-            <boxGeometry args={[0.02, 0.2, 0.03]} />
-            <meshStandardMaterial color="#64748b" metalness={0.8} />
-          </mesh>
-        ))}
-      </group>
+      {/* 3. Các món hàng trong giỏ gộp chung 1 InstancedMesh */}
+      {cartItemBatch.matrices.length > 0 && (
+        <instancedMesh
+          ref={cartItemsRef}
+          args={[unitBox, mats.itemVertex, cartItemBatch.matrices.length]}
+          castShadow
+        />
+      )}
     </group>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useEffect } from "react";
+import React, { useRef, useMemo, useEffect, useLayoutEffect } from "react";
 import { RoundedBox, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -6,6 +6,7 @@ import { useCartStore } from "../../stores/useCartStore";
 import { useAppStore } from "../../stores/useAppStore";
 import { useCheckoutStore } from "../../stores/useCheckoutStore";
 import { CHECKOUT_LAYOUT } from "../../data/storeLayout";
+import { applyMatricesToInstancedMesh } from "../../utils/instancingHelper";
 import {
   playLaserBeepSound,
   playReceiptPrintSound,
@@ -22,11 +23,13 @@ export const SelfCheckoutScanner3D: React.FC = () => {
 
   const {
     phase,
+    activeKioskId,
     currentItemIndex,
     scannedCount,
     scanProgress,
     isAutoScanning,
     orderCode,
+    setActiveKioskId,
     startCheckout,
     setScanProgress,
     advanceToNextItem,
@@ -55,8 +58,11 @@ export const SelfCheckoutScanner3D: React.FC = () => {
   const laserRef = useRef<THREE.Mesh>(null);
   const laserLightRef = useRef<THREE.PointLight>(null);
 
-  // Hiệu ứng biên lai in nhả ra
-  const receiptHeight = useRef(0);
+  // Hiệu ứng biên lai in nhả ra qua scale Y (tránh recreate boxGeometry)
+  const receiptGroupRef = useRef<THREE.Group>(null);
+  const receiptScaleRef = useRef(0.05);
+
+  const isThisStationActive = activeKioskId === "checkout-04";
 
   // Reset cờ âm thanh khi đổi món
   useEffect(() => {
@@ -64,27 +70,24 @@ export const SelfCheckoutScanner3D: React.FC = () => {
     hasDroppedCurrentItem.current = false;
   }, [currentItemIndex]);
 
-  // Âm thanh khi thanh toán thành công
+  // Âm thanh khi thanh toán thành công (chỉ phát nếu Checkout 04 đang là trạm active)
   useEffect(() => {
-    if (phase === "success") {
+    if (phase === "success" && isThisStationActive) {
       playPaymentSuccessFanfare();
       playReceiptPrintSound();
     }
-  }, [phase]);
+  }, [phase, isThisStationActive]);
 
-  useFrame((_, delta) => {
-    // 1. Logic tự động quét từng món hàng
-    if (phase === "scanning" && isAutoScanning && totalUnits > 0) {
-      // Tốc độ quét: ~1.2 giây cho mỗi món
+  useFrame((state, delta) => {
+    // 1. Logic tự động quét từng món hàng (chỉ chạy khi trạm Checkout 04 đang active)
+    if (isThisStationActive && phase === "scanning" && isAutoScanning && totalUnits > 0) {
       const nextProgress = scanProgress + delta * 0.85;
 
-      // Phát tiếng bíp quét mã khi món nằm ngay giữa máy quét
       if (nextProgress >= 0.45 && !hasBeepedCurrentItem.current) {
         hasBeepedCurrentItem.current = true;
         playLaserBeepSound();
       }
 
-      // Phát tiếng rơi vào túi giấy khi món sắp tiếp đất
       if (nextProgress >= 0.92 && !hasDroppedCurrentItem.current) {
         hasDroppedCurrentItem.current = true;
         playCartDropClack();
@@ -99,12 +102,12 @@ export const SelfCheckoutScanner3D: React.FC = () => {
 
     // 2. Chuyển động tia laser đỏ quét qua lại trên mặt kính
     if (laserRef.current) {
-      if (phase === "scanning") {
+      if (isThisStationActive && phase === "scanning") {
         laserRef.current.visible = true;
-        const sweep = Math.sin(Date.now() * 0.01) * 0.1;
+        const sweep = Math.sin(state.clock.elapsedTime * 10) * 0.1;
         laserRef.current.position.z = 0.12 + sweep;
         if (laserLightRef.current) {
-          laserLightRef.current.intensity = 1.8 + Math.sin(Date.now() * 0.02) * 0.8;
+          laserLightRef.current.intensity = 1.6 + Math.sin(state.clock.elapsedTime * 20) * 0.6;
         }
       } else {
         laserRef.current.visible = false;
@@ -112,11 +115,14 @@ export const SelfCheckoutScanner3D: React.FC = () => {
       }
     }
 
-    // 3. Animation in biên lai nhả giấy khi thanh toán thành công
-    if (phase === "success" && receiptHeight.current < 0.28) {
-      receiptHeight.current = Math.min(0.28, receiptHeight.current + delta * 0.4);
-    } else if (phase !== "success") {
-      receiptHeight.current = 0;
+    // 3. Animation scale Y cho dải giấy biên lai
+    if (phase === "success" && isThisStationActive) {
+      receiptScaleRef.current = Math.min(1, receiptScaleRef.current + delta * 1.4);
+    } else {
+      receiptScaleRef.current = 0.05;
+    }
+    if (receiptGroupRef.current) {
+      receiptGroupRef.current.scale.set(1, receiptScaleRef.current, 1);
     }
   });
 
@@ -124,6 +130,8 @@ export const SelfCheckoutScanner3D: React.FC = () => {
   const handleStationClick = (event: { stopPropagation: () => void }) => {
     event.stopPropagation();
     if (isSpatialInputBlocked(useAppStore.getState())) return;
+
+    setActiveKioskId("checkout-04");
 
     if (totalItems === 0) {
       setIsCartOpen(true);
@@ -168,18 +176,58 @@ export const SelfCheckoutScanner3D: React.FC = () => {
     activeItemPos = [x, y, z];
   }
 
+  const staticBoxRef = useRef<THREE.InstancedMesh>(null);
+  const unitBox = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
+  const staticVertexMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.35, metalness: 0.25 }),
+    []
+  );
+
+  const staticBatch = useMemo(() => {
+    const matrices: THREE.Matrix4[] = [];
+    const colors: THREE.Color[] = [];
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    const s = new THREE.Vector3();
+    const addBox = (hex: string, x: number, y: number, z: number, sx: number, sy: number, sz: number) => {
+      p.set(x, y, z);
+      s.set(sx, sy, sz);
+      matrices.push(new THREE.Matrix4().compose(p, q, s));
+      colors.push(new THREE.Color(hex));
+    };
+
+    // Bàn đặt hàng trái & bàn đóng gói phải (đặt theo tọa độ cục bộ trạm Kiosk 04)
+    addBox("#f1f5f9", -0.85, 0.44, 0, 0.7, 0.88, 0.75);
+    addBox("#cbd5e1", -0.85, 0.89, 0, 0.74, 0.04, 0.79);
+    addBox("#f1f5f9", 0.85, 0.44, 0, 0.7, 0.88, 0.75);
+    addBox("#cbd5e1", 0.85, 0.89, 0, 0.74, 0.04, 0.79);
+    // Thân bục Kiosk trung tâm, bảng nhận diện xanh lá & khe nhả hóa đơn
+    addBox("#0f172a", 0, 0.52, 0, 0.76, 1.05, 0.65);
+    addBox("#15803d", 0, 0.5, 0.328, 0.62, 0.5, 0.01);
+    addBox("#020617", 0.26, 1.06, 0.05, 0.14, 0.015, 0.06);
+    // Túi giấy SmartMart bên bàn đóng gói & trụ cột biển báo AVAILABLE
+    addBox("#fdfbf7", 0.85, 1.15, 0, 0.34, 0.46, 0.22);
+    addBox("#475569", -0.85, 1.6, -0.2, 0.048, 1.8, 0.048);
+
+    return { matrices, colors };
+  }, []);
+
+  useLayoutEffect(() => {
+    applyMatricesToInstancedMesh(staticBoxRef.current, staticBatch.matrices, 0, staticBatch.colors);
+  }, [staticBatch]);
+
   return (
     <group position={[CHECKOUT_LAYOUT.x, 0, CHECKOUT_LAYOUT.z]} onClick={handleStationClick}>
-      {/* 1. Bàn đặt hàng bên trái (Place items here) */}
+      {/* Khối kết cấu tĩnh trạm Check-out 04 hợp nhất vào 1 InstancedMesh (Phase 6) */}
+      <instancedMesh
+        ref={staticBoxRef}
+        args={[unitBox, staticVertexMat, staticBatch.matrices.length]}
+        castShadow
+        receiveShadow
+      />
+
+      {/* 1. Nhãn bàn đặt hàng bên trái */}
       <group position={[-0.85, 0, 0]}>
-        <mesh position={[0, 0.44, 0]} castShadow receiveShadow>
-          <boxGeometry args={[0.7, 0.88, 0.75]} />
-          <meshStandardMaterial color="#f1f5f9" roughness={0.2} />
-        </mesh>
-        <mesh position={[0, 0.89, 0]}>
-          <boxGeometry args={[0.74, 0.04, 0.79]} />
-          <meshStandardMaterial color="#cbd5e1" metalness={0.7} roughness={0.2} />
-        </mesh>
         <Text position={[0, 0.72, 0.38]} fontSize={0.065} color="#64748b" anchorX="center" anchorY="middle">
           KHU VỰC ĐẶT HÀNG
         </Text>
@@ -199,16 +247,6 @@ export const SelfCheckoutScanner3D: React.FC = () => {
 
       {/* 2. Trạm Kiosk trung tâm (SCAN > BAG > PAY / CHECKOUT 04) */}
       <group position={[0, 0, 0]}>
-        {/* Thân bục Kiosk */}
-        <RoundedBox args={[0.76, 1.05, 0.65]} position={[0, 0.52, 0]} radius={0.05} smoothness={4} castShadow>
-          <meshStandardMaterial color="#0f172a" metalness={0.4} roughness={0.25} />
-        </RoundedBox>
-
-        {/* Panel nhận diện thương hiệu màu xanh lá */}
-        <mesh position={[0, 0.5, 0.33]}>
-          <planeGeometry args={[0.62, 0.5]} />
-          <meshStandardMaterial color="#15803d" roughness={0.3} />
-        </mesh>
         <Text position={[0, 0.58, 0.34]} fontSize={0.075} color="#ffffff" anchorX="center" anchorY="middle">
           SCAN ➔ BAG ➔ PAY
         </Text>
@@ -336,17 +374,11 @@ export const SelfCheckoutScanner3D: React.FC = () => {
 
         {/* Khe nhả biên lai hóa đơn & Giấy in biên lai 3D nhả ra */}
         <group position={[0.26, 1.06, 0.05]}>
-          {/* Khe máy in */}
-          <mesh>
-            <boxGeometry args={[0.14, 0.015, 0.06]} />
-            <meshStandardMaterial color="#020617" roughness={0.8} />
-          </mesh>
-
-          {/* Dải giấy biên lai in nhả ra */}
+          {/* Dải giấy biên lai in nhả ra (scale Y mượt không tạo lại geometry) */}
           {phase === "success" && (
-            <group position={[0, -receiptHeight.current / 2, 0.03]} rotation={[-0.3, 0, 0]}>
+            <group ref={receiptGroupRef} position={[0, -0.14, 0.03]} rotation={[-0.3, 0, 0]}>
               <mesh castShadow>
-                <boxGeometry args={[0.12, receiptHeight.current, 0.002]} />
+                <boxGeometry args={[0.12, 0.28, 0.002]} />
                 <meshStandardMaterial color="#ffffff" roughness={0.4} />
               </mesh>
               <Text position={[0, 0, 0.003]} fontSize={0.022} color="#0f172a" anchorX="center" anchorY="middle">
@@ -359,24 +391,12 @@ export const SelfCheckoutScanner3D: React.FC = () => {
 
       {/* 3. Bàn đóng gói bên phải (Bagging Area) kèm túi giấy SmartMart */}
       <group position={[0.85, 0, 0]}>
-        <mesh position={[0, 0.44, 0]} castShadow receiveShadow>
-          <boxGeometry args={[0.7, 0.88, 0.75]} />
-          <meshStandardMaterial color="#f1f5f9" roughness={0.2} />
-        </mesh>
-        <mesh position={[0, 0.89, 0]}>
-          <boxGeometry args={[0.74, 0.04, 0.79]} />
-          <meshStandardMaterial color="#cbd5e1" metalness={0.7} roughness={0.2} />
-        </mesh>
         <Text position={[0, 0.72, 0.38]} fontSize={0.065} color="#64748b" anchorX="center" anchorY="middle">
           KHU VỰC ĐÓNG TÚI
         </Text>
 
-        {/* Túi giấy mua sắm màu trắng có logo SmartMart xanh */}
+        {/* Chữ & hàng trên túi giấy SmartMart */}
         <group position={[0, 1.15, 0]}>
-          <mesh castShadow>
-            <boxGeometry args={[0.34, 0.46, 0.22]} />
-            <meshStandardMaterial color="#fdfbf7" roughness={0.5} />
-          </mesh>
           <Text position={[0, 0.08, 0.12]} fontSize={0.055} color="#15803d" anchorX="center" anchorY="middle">
             SMARTMART
           </Text>
@@ -404,11 +424,7 @@ export const SelfCheckoutScanner3D: React.FC = () => {
         </group>
       </group>
 
-      {/* 4. Cột đèn trần cao với biển báo "AVAILABLE / CHECKOUT 04" màu xanh lá */}
-      <mesh position={[-0.85, 1.6, -0.2]}>
-        <cylinderGeometry args={[0.025, 0.025, 1.8, 12]} />
-        <meshStandardMaterial color="#475569" metalness={0.8} />
-      </mesh>
+      {/* 4. Biển báo "AVAILABLE / CHECKOUT 04" màu xanh lá */}
       <group position={[-0.85, 2.45, -0.2]}>
         <mesh castShadow>
           <boxGeometry args={[1.05, 0.42, 0.08]} />
@@ -425,13 +441,6 @@ export const SelfCheckoutScanner3D: React.FC = () => {
           CHECKOUT 04
         </Text>
       </group>
-
-      <pointLight
-        position={[0, 1.6, 0.2]}
-        color={phase === "success" ? "#22c55e" : "#4ade80"}
-        intensity={phase === "success" ? 3 : 2}
-        distance={3.5}
-      />
     </group>
   );
 };

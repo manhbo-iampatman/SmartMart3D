@@ -737,3 +737,195 @@ Tuân thủ nguyên tắc thiết kế có bản sắc riêng, loại bỏ các 
    - Toàn bộ **26 test files với 151/151 tests PASS (100%)**.
    - Build production bằng Vite hoàn thành trong **1.47 giây**, bundle tối ưu hoàn hảo.
 
+---
+
+### 11.8. Nghiệm thu Phase 1: Mở Rộng Vỏ Công Trình Đại Siêu Thị 40m × 54m & Hệ Thống Trần Công Nghiệp
+
+Dựa trên bản thiết kế đại siêu thị tiêu chuẩn quốc tế của tác giả Omid (`D:\Docker\demo`, ảnh `01-overview.webp` và `02-entrance.webp`):
+
+1. **Mở Rộng Không Gian Mặt Bằng Toàn Diện ([storeLayout.ts](./src/data/storeLayout.ts))**:
+   - Mở rộng phạm vi di chuyển và sàn không gian lên $40\text{m} \times 54\text{m}$ ($X \in [-20, 20]$, $Z \in [-27, 27]$).
+   - Tối ưu hóa thuật toán A\* với kích thước ô lưới `cellSize: 0.35m`, giảm tải bộ nhớ và đảm bảo tìm đường tức thì trong $< 3\text{ms}$.
+   - Tích hợp 12 cột kết cấu chịu lực vào bản đồ chướng ngại vật `obstacles` để tránh tuyệt đối va chạm khi di chuyển.
+
+2. **Vỏ Công Trình Kiến Trúc Đại Siêu Thị ([SupermarketStructure.tsx](./src/components/3d/SupermarketStructure.tsx))**:
+   - **Mặt sàn bê tông mài bóng (40m × 54m)**: Tone xám sáng `#e2e8f0` với độ nhám bề mặt thực tế `roughness: 0.18`, phản chiếu vệt sáng tự nhiên.
+   - **Trục sảnh chính (Main Concourse)**: Rộng $4.2\text{m}$ nối thẳng từ cửa vào xuyên suốt đại siêu thị, sơn viền vạch phản quang nhận diện thương hiệu SmartMart.
+   - **Hệ dầm vì kèo thép công nghiệp mở (Open-Truss Roof)**:
+     - 9 khung vì kèo nhịp ngang $40\text{m}$ ở cao độ $y = 5.2\text{m} \to 5.8\text{m}$.
+     - 20 khoang tam giác thanh giằng chéo chữ W (W-struts) trên mỗi vì kèo.
+     - 7 hàng xà gồ dọc (Purlins) liên kết toàn bộ mái siêu thị dọc suốt $54\text{m}$.
+   - **Hệ thống đường ống thông gió điều hòa HVAC tròn**:
+     - 2 đường ống gió mạ kẽm (Galvanized Zinc) đường kính $0.65\text{m}$ chạy dọc 2 bên sảnh tại $X = \pm 6\text{m}$, treo bằng ti thép từ vì kèo.
+     - Miệng khuếch tán gió hình nón xoay (Diffusers) hướng xuống mặt sàn.
+   - **8 dãy máng đèn tuýp LED đôi thả trần (y = 4.3m)**: Cung cấp ánh sáng đồng đều khắp các lối đi mà không làm tốn draw call.
+   - **Hệ thống 12 cột chịu lực vuông 0.5m × 0.5m**:
+     - Phân bổ tại $X = \pm 10\text{m}$, $Z \in [-20, -12, -4, 4, 12, 20]\text{m}$.
+     - Chân cột ốp thép chống va đập màu đen than cao $0.18\text{m}$ và đai cảnh báo an toàn.
+     - Biển định vị phản quang hai mặt đánh số từ `C-01` đến `C-12`.
+   - **Cổng sảnh đón tiếp & Vòm kính phía Nam (Z = 27m)**:
+     - Tường bao cao $6\text{m}$ bao quanh 4 mặt với len chân tường bảo vệ.
+     - Vòm cổng sảnh đón tiếp mang thương hiệu *"SMARTMART 3D HYPERMARKET - ĐẠI SIÊU THỊ KHÔNG GIAN TƯƠNG LAI"*.
+     - Hệ cửa trượt tự động khung nhôm kính cùng cổng từ an ninh (Security Pedestals).
+     - Thảm chào mừng *"WELCOME TO SMARTMART 3D HYPERMARKET"* tại sảnh đón.
+
+3. **Cập nhật Radar Bản đồ & Fast-Travel ([FloorPlanMap.tsx](./src/components/3d/FloorPlanMap.tsx))**:
+   - Bổ sung địa danh Fast-Travel **"Sảnh Chính"** ($X = 0, Z = 22$, hướng nhìn 0) cho phép 1-chạm bay thẳng tới tầm nhìn đại cảnh lối vào (Entrance Vista).
+   - Tự động co giãn bản đồ SVG theo tỷ lệ không gian mới $40\text{m} \times 54\text{m}$.
+
+4. **Kết quả Kiểm thử & Nghiệm thu Chất lượng**:
+   - Bổ sung bộ test chuyên biệt [SupermarketStructure.test.tsx](./src/test/SupermarketStructure.test.tsx).
+   - Đạt **27/27 test files, 153/153 tests PASS (100%)**.
+   - Build production hoàn tất trong **1.42 giây**, không phát sinh cảnh báo lỗi TypeScript.
+
+---
+
+### 11.9. Nghiệm thu Phase 2: Dãy Kệ Gondola Chuẩn Hóa & Mở Rộng Tạp Hóa (Cross-Aisle & Suspended LCDs)
+
+Dựa trên bản thiết kế đại siêu thị tiêu chuẩn quốc tế của tác giả Omid (`D:\Docker\demo`, ảnh `04-grocery.webp`):
+
+1. **Chuẩn Hóa Khung Kệ Gondola Cao Tầng ([AisleGondola.tsx](./src/components/3d/AisleGondola.tsx))**:
+   - **Tấm lưng tôn đục lỗ (Perforated Pegboard Backing)**: Màu trắng xám `#f1f5f9` với bề mặt đục lỗ li ti 2 mặt mô phỏng chuẩn xác chiều sâu vật liệu của kệ siêu thị hiện đại.
+   - **Chân đế chịu lực & Kickplate**: Cao $0.18\text{m}$, ốp nẹp màu xanh SmartMart (`#0071dc`) sắc nét trên khung thép xám đen `#0f172a`.
+   - **Khay kệ kim loại 4 tầng ($y = [0.45, 0.95, 1.45, 1.95]\text{m}$)**:
+     - **Dải nẹp ray bảng giá màu trắng sữa liên tục (Continuous White Price Rail)**: Chạy suốt chiều dài mép trước và mép sau khay kệ với chỉ viền xanh SmartMart tinh tế.
+     - **Đèn LED hắt sáng gầm kệ (Shelf Underglow)**: Dải phát quang màu trắng ấm (`emissiveIntensity: 0.85`) tôn vinh bao bì sản phẩm ở mọi tầng.
+   - **Vách ngăn đứng (Bay Dividers)**: 5 vách ngăn thép dày $0.05\text{m}$ chia đều thành 6 khoang chuẩn $1.2\text{m}$, đồng bộ hoàn toàn với quy tắc toán học trong `stockMatrices.ts`.
+   - **Kệ đầu hồi (Endcaps)**: Tích hợp biển định danh mã dãy bo góc lớn (A01 đến A08) và tên ngành hàng rõ ràng.
+
+2. **Mở Rộng Dãy Kệ Tạp Hóa Phía Tây & Lối Cắt Ngang (Cross-Aisle)**:
+   - Bố trí các dãy kệ mở rộng tại $X = -7.0\text{m}$ và $X = -14.0\text{m}$ ([`storeLayout.ts`](./src/data/storeLayout.ts)).
+   - Mỗi dãy được ngắt làm 2 khối (Khối Bắc $Z \in [-7.2, -1.2]\text{m}$ và Khối Nam $Z \in [1.2, 7.2]\text{m}$).
+   - Khoảng trống giữa $Z \in [-1.2, 1.2]\text{m}$ tạo thành **Lối đi cắt ngang (Cross-Aisle) rộng 2.4m**, cho phép khách hàng chuyển làn linh hoạt giữa các dãy kệ mà không phải đi vòng hết chiều dài dãy.
+
+3. **Màn Hình LCD Kỹ Thuật Số Treo Trần (Suspended Digital Promo LCD)**:
+   - Treo ở cao độ $y = 3.6\text{m}$ tại các đầu lối đi chính bằng dây cáp mạ bạc mỏng mảnh thả từ vì kèo mái.
+   - Vỏ viền mỏng (Ultra-slim bezel), phát sáng 2 mặt trước sau.
+   - Hiển thị thông tin khuyến mãi tâm điểm chuẩn phong cách Hypermarket:
+     - *"SmartMart ★ GROCERY FOCUS / Yến Mạch Úc Rolled Oats 500g / 36.000 đ"*
+     - *"SmartMart ★ FRESH PROMO / Bánh Choco-Pie Hộp 12 Cái / 62.000 đ"*
+
+4. **Kết Quả Kiểm Thử & Tối Ưu Hóa Production**:
+   - Bổ sung bộ kiểm thử chuyên biệt [AisleGondola.test.tsx](./src/test/AisleGondola.test.tsx).
+   - Đạt **28/28 test files, 156/156 tests PASS (100%)**.
+   - Build production hoàn tất thành công trong **2.29 giây**.
+
+---
+
+### 11.10. Nghiệm thu Phase 3: Phân Khu Rau Củ Quả Tươi Sống (Fresh Produce Section & Wall Murals)
+
+Dựa trên bản thiết kế đại siêu thị tiêu chuẩn quốc tế của tác giả Omid (`D:\Docker\demo`, ảnh `02-produce.webp` và `03-produce-tables.webp`):
+
+1. **Kiến Trúc Bàn Trưng Bày Nan Gỗ Sẫm Màu (Dark Wood Slatted Tables) ([ProduceSection.tsx](./src/components/3d/ProduceSection.tsx))**:
+   - **Mặt bàn nghiêng $8^\circ$ công thái học**: Kích thước module $2.2\text{m} \times 1.2\text{m} \times 0.85\text{m}$, mặt bàn nan gỗ sẫm màu (`#3e2723` / `#4e342e`) tạo vẻ mộc mạc, tươi sạch tự nhiên.
+   - **Vách ngăn mica trong suốt (Acrylic Dividers)**: Vách ngăn acrylic cao $0.14\text{m}$ phân chia khoa học thành 2 hoặc 4 ô chứa nông sản, chống tràn dập sản phẩm khi trưng bày.
+   - **Chân đế hộp & Thùng gỗ phụ trữ hàng (Under-table Storage Crates)**: Dưới gầm mỗi bàn trang bị 2 thùng gỗ mộc `#5d4037` đựng hàng dự trữ, tái hiện không gian vận hành thực tế của quầy rau quả.
+   - **Bảng giá chân quỳ góc nghiêng (Angled Price Stands)**: Thiết kế chân quỳ kim loại thanh mảnh cắm trực tiếp trên mặt bàn, biển bảng đen bo góc viền xanh in rõ tên tiếng Việt, đơn vị tính và giá niêm yết (VNĐ).
+
+2. **Danh Mục Nông Sản Tươi & Dữ Liệu Tách Rời ([produceProducts.ts](./src/data/produceProducts.ts) & [produceLayout.ts](./src/data/produceLayout.ts))**:
+   - Tách biệt 100% dữ liệu sản phẩm, tọa độ và bố cục trưng bày theo kiến trúc 3 tầng (Data-Driven Planogram Engine).
+   - Danh mục 6 mặt hàng nông sản tiêu biểu:
+     - *Ớt chuông Đà Lạt (52.000 đ/kg)* - Tone đỏ cam rực rỡ `#dc2626`
+     - *Dưa leo baby Đà Lạt (28.000 đ/kg)* - Tone xanh diệp lục `#15803d`
+     - *Táo Envy New Zealand (89.000 đ/kg)* - Tone đỏ vang `#b91c1c`
+     - *Chanh vàng Eureka (45.000 đ/kg)* - Tone vàng chanh `#facc15`
+     - *Bơ sáp 034 Đắk Lắk (65.000 đ/kg)* - Tone xanh quả bơ `#166534`
+     - *Cà chua bi Cherry (35.000 đ/hộp)* - Cụm đa điểm đỏ mọng `#ef4444`
+
+3. **Hệ Thống Tranh Tường & Biển Treo Nhận Diện (Fresh Picks Murals & Signage)**:
+   - **3 Pano tranh tường nghệ thuật cao cấp** ốp sát vách tường Đông ($X = 19.8\text{m}$):
+     - *"SmartMart ★ Fresh picks / Rau củ sạch tươi ngon mỗi ngày"* (Tone Forest Green `#14532d`)
+     - *"Farm to Table / 100% Canh tác tiêu chuẩn VietGAP"* (Tone Sun Gold `#b45309`)
+     - *"Daily Harvest / Nông sản thu hoạch trực tiếp trong ngày"* (Tone Emerald `#047857`)
+   - **Biển treo ngành hàng thả trần**: Treo ở $y = 4.2\text{m}$ với chữ 3D nổi bật: *"RAU CỦ QUẢ TƯƠI SỐNG - FRESH PRODUCE"*.
+
+4. **Tích Hợp Vật Cản A\* & Fast-Travel ([storeLayout.ts](./src/data/storeLayout.ts), [FloorPlanMap.tsx](./src/components/3d/FloorPlanMap.tsx))**:
+   - Toàn bộ 6 cụm bàn rau củ được khai báo vào danh sách vật cản tĩnh của thuật toán A\*, ngăn tuyệt đối việc người chơi hay chế độ "Tự đi" xuyên qua bàn.
+   - Thêm nút Fast-Travel **"Rau Củ Tươi"** ($X = 10.5\text{m}, Z = -8.0\text{m}$) trên Radar Minimap 2D giúp tiếp cận gian hàng ngay lập tức.
+
+5. **Kết Quả Kiểm Thử & Tối Ưu Hóa Production**:
+   - Bổ sung bộ kiểm thử tự động [ProduceSection.test.tsx](./src/test/ProduceSection.test.tsx).
+   - Toàn bộ **29/29 test files, 159/159 tests PASS (100%)**.
+   - Build production hoàn tất thành công trong **2.54 giây**, không có lỗi type hay cảnh báo hiệu năng.
+
+---
+
+### 11.11. Nghiệm thu Hội đồng 6 AI Agent: Chuẩn Hóa Phase 1–3 & Hoàn Thành Phase 4 (Đảo Thời Trang Sàn Gỗ Birch Wood)
+
+Dựa trên giao thức đồng thuận đa tác nhân (**SmartMart 3D Multi-Agent Consensus**) và bản thiết kế đối chiếu [`D:\Docker\demo\05-apparel.webp`](file:///D:/Docker/demo/05-apparel.webp):
+
+1. **Chuẩn Hóa Hiệu Năng WebGL & GPU Instancing Toàn Cảnh (Agent 3 & Agent 2)**:
+   - **Khóa Pixel Ratio di động**: Thiết lập `dpr={[1, 1.8]}` trên `<Canvas>` tại [`Scene3D.tsx`](./src/components/3d/Scene3D.tsx) và [`ProductPreview3D.tsx`](./src/components/3d/ProductPreview3D.tsx), đồng thời chỉ sử dụng ánh sáng cục bộ (Local Lighting).
+   - **Chuyển đổi Nông sản sang `THREE.InstancedMesh` ([`ProduceSection.tsx`](./src/components/3d/ProduceSection.tsx))**: Toàn bộ hàng trăm quả nông sản trên 6 bàn được gom thành **6 `InstancedMesh`** gắn `userData.product` (cho phép nhặt bằng phím `E` / Click & xem 360°), kết cấu 6 bàn nan gỗ gom thành 6 `InstancedMesh` và loại bỏ material `transmission={0.9}` gây pass render dư thừa.
+   - **Gom batch Kết Cấu Siêu Thị & Kệ Gondola ([`SupermarketStructure.tsx`](./src/components/3d/SupermarketStructure.tsx), [`AisleGondola.tsx`](./src/components/3d/AisleGondola.tsx))**: 12 cột chịu lực, 180 thanh giằng W-struts, xà gồ, đường ống HVAC, 8 dãy đèn LED và toàn bộ 8 dãy kệ Gondola (`A01–A08`) được tối ưu hóa qua helper dùng chung [`instancingHelper.ts`](./src/utils/instancingHelper.ts).
+
+2. **Hợp Nhất Nguồn Chân Lý Danh Mục 2D $\leftrightarrow$ 3D (Agent 1 & Agent 4)**:
+   - Xây dựng [`catalog.ts`](./src/data/catalog.ts) hợp nhất **`ALL_PRODUCTS` (24 sản phẩm: 12 Tạp hóa + 6 Nông sản + 6 Thời trang)**.
+   - Kết nối [`QuickShopView.tsx`](./src/components/2d/QuickShopView.tsx), [`SpatialShopHUD.tsx`](./src/components/3d/SpatialShopHUD.tsx), [`ProductInspector3D.tsx`](./src/components/3d/ProductInspector3D.tsx) và [`FloorPlanMap.tsx`](./src/components/3d/FloorPlanMap.tsx) vào `ALL_PRODUCTS` trong khi giữ nguyên 12 phần tử chuẩn của `MOCK_PRODUCTS`.
+   - Chuẩn hóa [`HeaderNavbar.tsx`](./src/components/shared/HeaderNavbar.tsx) đúng chiều cao **56px (`h-14`)**, bộ token `hyper-ink`, `hyper-surface`, `hyper-primary`, `hyper-accent`, `hyper-border`, chữ số `tabular-nums`, loại bỏ gradient đa sắc.
+
+3. **Triển Khai Phase 4: Đảo Thời Trang & Phụ Kiện Sàn Gỗ Birch Wood ([`ApparelSection.tsx`](./src/components/3d/ApparelSection.tsx))**:
+   - **Sàn gỗ Birch Wood Parquet ($13\text{m} \times 14\text{m}$)** tại $X \in [6.5, 19.5]\text{m}$, $Z \in [0.5, 14.5]\text{m}$ sử dụng texture gỗ ghép thanh [`getBirchWoodTexture()`](./src/utils/textureGenerator.ts), không giao cắt với khu Tạp hóa ($X \le 5.87\text{m}$) và khu Rau củ ($Z \le -1.35\text{m}$).
+   - **Trần hạ bậc modular ($y = 4.5\text{m}$)** tích hợp 4 dãy đèn tuýp âm trần.
+   - **4 Giá treo quần áo chữ U (`Everyday clothing`) & 4 Bàn phụ kiện 3 bậc (`Accessories`)** khai báo hoàn toàn theo Data-Driven tại [`apparelLayout.ts`](./src/data/apparelLayout.ts) và [`apparelProducts.ts`](./src/data/apparelProducts.ts), khống chế chiều cao tối đa $\le 1.36\text{m} < 1.40\text{m}$ giữ tầm nhìn mở xuyên suốt siêu thị.
+   - **Tích hợp A\* & Fast-Travel**: Cập nhật vật cản vào [`storeLayout.ts`](./src/data/storeLayout.ts), bổ sung fallback tìm điểm đứng bàn đảo trong [`pathfinding.ts`](./src/utils/pathfinding.ts) (`getShelfApproach`), và thêm nút Fast-Travel **"Thời Trang"** ($X = 11.0, Z = 7.5$) trên [`FloorPlanMap.tsx`](./src/components/3d/FloorPlanMap.tsx).
+
+4. **Kết Quả Kiểm Thử & Nghiệm Thu QA (Agent 6)**:
+   - Bổ sung [`ApparelSection.test.tsx`](./src/test/ApparelSection.test.tsx) và cập nhật [`ProduceSection.test.tsx`](./src/test/ProduceSection.test.tsx), [`pathfinding.test.ts`](./src/test/pathfinding.test.ts), [`QuickShopView.test.tsx`](./src/test/QuickShopView.test.tsx), [`App.test.tsx`](./src/test/App.test.tsx), [`FloorPlanMapFastTravel.test.tsx`](./src/test/FloorPlanMapFastTravel.test.tsx).
+   - **30/30 test files, 177/177 tests PASS (100%)**.
+   - **Build production (`tsc && vite build`)**: Thành công trong **1.89 giây**, 0 lỗi TypeScript.
+
+---
+
+### 11.12. Nghiệm thu Hội đồng 5 Subagent (`define_subagent` + `send_message`): Triển Khai Phase 5 (Dãy 8 Kiosk Self-Checkout & Chuồng Xe Đẩy `CartCorral`)
+
+Triển khai trực tiếp qua cơ chế đa tác nhân đồng thuận chéo giữa 5 subagent độc lập (**Agent 2 Spatial**, **Agent 3 Performance**, **Agent 4 UI/UX**, **Agent 5 Navigation/Audio**, **Agent 6 QA Gatekeeper**):
+
+1. **Quy Hoạch Kiến Trúc Sảnh Nam ([`checkoutLayout.ts`](./src/data/checkoutLayout.ts), [`CheckoutBank.tsx`](./src/components/3d/CheckoutBank.tsx))**:
+   - **8 Kiosk Self-Checkout (`SCO-01..SCO-08`)** bố trí thành 2 cánh đối xứng dọc trục $Z = 17.0\text{m}$ (cánh Tây $X \in [-11.5, -4.0]$, cánh Đông $X \in [4.0, 11.5]$), giữ trọn trục Sảnh Chính rộng $6.30\text{m}$, cách khu Thời Trang $2.025\text{m}$ và cách hàng cột `C-06/C-12` hơn $2.24\text{m}$.
+   - Toàn bộ phần tĩnh của 8 Kiosk gom vào **7 `InstancedMesh` batches** + **1 `InstancedMesh` biển `"Self checkout"`** (bảng màu `hyper-surface`, `hyper-ink`, `hyper-primary`, `hyper-fresh`), kèm **1 Hero Overlay duy nhất** kích hoạt theo `activeKioskId`.
+   - **4 Pano tranh tường khu thu ngân** tại $Z = 26.80\text{m}$ (*"Fresh picks"* & *"Fill your pantry"* thuần thương hiệu SmartMart 3D) render bằng `CanvasTexture` phẳng qua [`getFreshPicksMuralTexture()`](./src/utils/textureGenerator.ts) và [`getFillYourPantryMuralTexture()`](./src/utils/textureGenerator.ts).
+
+2. **Chuồng Xe Đẩy Lồng Nhau ([`CartCorral.tsx`](./src/components/3d/CartCorral.tsx))**:
+   - Đặt tại $[-15.5, 0, 21.5]$ (2 làn $\times$ 6 xe = 12 xe đẩy lồng nhau, bước $0.34\text{m}$), mở miệng hướng `+X` đón khách từ sảnh chính.
+   - Gộp toàn bộ vào **5 `InstancedMesh` batches**, sử dụng texture lưới `alphaTest` ([`getWireMeshTexture()`](./src/utils/textureGenerator.ts)) thay `wireframe` chồng lớp; hỗ trợ click mở giỏ hàng trong tầm với `<= 2.5m`.
+
+3. **Tối Ưu Hóa Nền, Đồng Bộ 4 Bước & Bảo Vệ Đường Đi A\***:
+   - Xóa `transmission={0.9}` tại [`FreezerWall` (`StoreFixtures.tsx`)](./src/components/3d/StoreFixtures.tsx) và thiết lập `frames={1}`, `resolution={256}` cho `<ContactShadows>` trong [`Scene3D.tsx`](./src/components/3d/Scene3D.tsx).
+   - Bảo toàn nguyên trạng trạm biểu diễn cũ `CHECKOUT_LAYOUT` $(0, -4.7)$, `SelfCheckoutScanner3D` (`CHECKOUT 04`) và landmark `Thu Ngân 04 (0, -3.4)`; gộp 3 AABB mới (`kiosk-bank-west`, `kiosk-bank-east`, `cart-corral-south`) vào [`storeLayout.ts`](./src/data/storeLayout.ts) để loại bỏ khe kẹt $0.80\text{m}$.
+   - Đồng bộ 4 bước (`idle -> scanning -> payment -> success`) giữa [`useCheckoutStore.ts`](./src/stores/useCheckoutStore.ts) (`activeKioskId`), [`CheckoutModal.tsx`](./src/components/shared/CheckoutModal.tsx) (tự reset khi mở lại từ `success`), [`PlayerFPS.tsx`](./src/components/3d/PlayerFPS.tsx) (`stopAllSupermarketSounds()` khi `blocked`), [`ShoppingTrolley.tsx`](./src/components/3d/ShoppingTrolley.tsx) (`ignoreProductRaycast`) và [`FloorPlanMap.tsx`](./src/components/3d/FloorPlanMap.tsx) (dải cuộn ngang mobile `390x844` + 2 landmark **"Kiosk Sảnh Nam"** và **"Chuồng Xe Đẩy"**).
+
+4. **Kết Quả Kiểm Thử & Thẩm Định Release Gate (Agent 6)**:
+   - Bổ sung [`CheckoutBank.test.tsx`](./src/test/CheckoutBank.test.tsx) (kiểm tra thật `THREE.InstancedMesh` & `THREE.Raycaster`), mở rộng [`pathfinding.test.ts`](./src/test/pathfinding.test.ts), [`CheckoutModal.test.tsx`](./src/test/CheckoutModal.test.tsx), [`FloorPlanMapFastTravel.test.tsx`](./src/test/FloorPlanMapFastTravel.test.tsx) và [`PlayerFPS.test.tsx`](./src/test/PlayerFPS.test.tsx).
+   - Toàn bộ **31/31 test files, 185/185 tests PASS (100%)** và `tsc && vite build` hoàn tất sạch lỗi.
+
+### 11.13. Nghiệm thu Hội đồng 5 Subagent: Hoàn Thiện Phase 6 (Texture Atlas 2048², Đóng Gói Instancing ≤ 75 Meshes, PBR Lighting, 6 Góc Nhìn Tham Chiếu & A* WeakMap Cache)
+
+Dưới cơ chế đồng thuận chéo giữa **Agent 2 (Spatial Art)**, **Agent 3 (Performance)**, **Agent 4 (UI/UX)**, **Agent 5 (Navigation/Audio)** và **Agent 6 (QA Gatekeeper)**, Phase 6 hoàn tất tối ưu hóa toàn diện kiến trúc WebGL, hiệu năng đường đi và giao diện sáng đồng nhất:
+
+1. **Texture Atlas & Hợp Nhất Material Trên GPU ([`textureAtlasGenerator.ts`](./src/utils/textureAtlasGenerator.ts), [`InstancedStock.tsx`](./src/components/3d/InstancedStock.tsx), [`StoreFixtures.tsx`](./src/components/3d/StoreFixtures.tsx))**:
+   - Đóng gói 8 mặt hàng tạp hóa vào 1 **Grocery Texture Atlas `2048×2048` (`4×2`)** dùng chung 1 `MeshStandardMaterial` duy nhất kết hợp UV remapping `remapGeometryToAtlasTile()`, gom 8 bảng giá thành 1 `InstancedMesh`.
+   - Đóng gói 4 biển ngành hàng vào **Banner Atlas `1024×512` (`2×2`)** và hợp nhất 8 mặt biển vào 1 `BufferGeometry` duy nhất.
+
+2. **Hợp Nhất `InstancedMesh` + `setColorAt` Toàn Cảnh & LOD Culling ([`instancingHelper.ts`](./src/utils/instancingHelper.ts), [`lodCulling.ts`](./src/utils/lodCulling.ts))**:
+   - Mở rộng [`applyMatricesToInstancedMesh()`](./src/utils/instancingHelper.ts) hỗ trợ mảng `colors?: THREE.Color[]` (`setColorAt` + `instanceColor.needsUpdate = true`).
+   - Áp dụng đồng loạt trên [`SupermarketStructure.tsx`](./src/components/3d/SupermarketStructure.tsx), [`AisleGondola.tsx`](./src/components/3d/AisleGondola.tsx), [`ProduceSection.tsx`](./src/components/3d/ProduceSection.tsx), [`ApparelSection.tsx`](./src/components/3d/ApparelSection.tsx), [`CheckoutBank.tsx`](./src/components/3d/CheckoutBank.tsx) (xác định trạm `SCO-01..08` trực tiếp qua `e.instanceId`, bỏ toàn bộ hitbox `opacity={0}`), [`CartCorral.tsx`](./src/components/3d/CartCorral.tsx), [`ShoppingTrolley.tsx`](./src/components/3d/ShoppingTrolley.tsx) và [`SelfCheckoutScanner3D.tsx`](./src/components/3d/SelfCheckoutScanner3D.tsx).
+   - Hệ thống **Centralized LOD (`useCameraLod`)** điều phối từ vòng lặp `useFrame` duy nhất tại [`PlayerFPS.tsx`](./src/components/3d/PlayerFPS.tsx), ẩn chi tiết nhỏ ngoài `18m–20m` (nhãn giá, cuống quả, móc áo, dải gầm kệ) và giữ luôn hiển thị toàn bộ **20 `InstancedMesh` sản phẩm tương tác**.
+   - **Kiểm toán Renderable Meshes + InstancedMeshes đạt `71 / 75`**: `SupermarketStructure (11)` + `AisleGondola (6)` + `InstancedStock (9)` + `StoreFixtures + SelfCheckout04 (12)` + `ProduceSection (9)` + `ApparelSection (11)` + `CheckoutBank (7)` + `CartCorral (3)` + `ShoppingTrolley (3)`.
+
+3. **Ánh Sáng PBR, 6 Góc Nhìn Tham Chiếu & Giao Diện Sáng `hyper-*` ([`Scene3D.tsx`](./src/components/3d/Scene3D.tsx), [`cameraPresets.ts`](./src/data/cameraPresets.ts), [`FloorPlanMap.tsx`](./src/components/3d/FloorPlanMap.tsx), [`LoadingScreen.tsx`](./src/components/shared/LoadingScreen.tsx), [`SpatialShopHUD.tsx`](./src/components/3d/SpatialShopHUD.tsx))**:
+   - Nâng cấp Tone Mapping `ACESFilmicToneMapping` (`exposure: 1.05`), nền trời sáng `#f1f5f9`, `shadows="soft"`, `<hemisphereLight>` và `directionalLight` bao phủ toàn bộ đại siêu thị `[-26, 26, 30, -30]`.
+   - Khai báo **6 Camera Presets** tại [`cameraPresets.ts`](./src/data/cameraPresets.ts) (`01-overview` hỗ trợ `isOverviewMode` tự ẩn mái/trần & trần thả khu Thời trang; `02-entrance` đến `06-checkout` đảm bảo `isWalkable === true`), chuyển đổi nhanh qua tab **"6 Góc nhìn"** trên [`FloorPlanMap.tsx`](./src/components/3d/FloorPlanMap.tsx).
+   - Đồng bộ theme sáng Kiến trúc Đương đại (`hyper-surface`, `hyper-card`, `hyper-primary`, `hyper-accent`, `hyper-fresh`) và tách cao độ nút mobile (`bottom-4` cho *Chuyển Sang Mua Nhanh 2D*, `bottom-16` cho *Tới quầy thanh toán*).
+
+4. **Tối Ưu Đường Đi A\* (`WeakMap` Cache) & Đóng Gói Production Vite 8 Rolldown ([`pathfinding.ts`](./src/utils/pathfinding.ts), [`vite.config.ts`](./vite.config.ts))**:
+   - Caching lưới `walkableMask` + 8-bit `edgeMask` theo `WeakMap<NavigationLayout, GridCache>` và tái sử dụng bộ đệm epoch không cấp phát lại (vô hiệu hóa sạch khi `obstacles` thay đổi).
+   - Cấu hình `rolldownOptions.output.codeSplitting.groups` (`three-core`, `r3f-ecosystem`, `react-vendor`) với `chunkSizeWarningLimit: 800`, giữ nguyên đồng bộ 2D/3D Single Source of Truth tại [`App.tsx`](./src/App.tsx).
+   - Bổ sung kiểm toán tự động [`VisualComparisonCapture.test.ts`](./src/test/VisualComparisonCapture.test.ts) và [`CheckoutBank.test.tsx`](./src/test/CheckoutBank.test.tsx) (`getKioskIndexFromSolidInstance`).
+
+
+
+
+
+
+

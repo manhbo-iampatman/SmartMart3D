@@ -31,19 +31,27 @@ export const ProductPreview3D: React.FC<PreviewProps> = ({ product, autoRotate, 
   const size = Math.max(width, height, depth);
   const texture = useMemo(() => getProductTextureById(product.id), [product.id]);
   const hasTexture = !!texture?.image;
-  const isCylinder = ["prod-drink-coca", "prod-drink-sting", "prod-oil-simply"].includes(product.id);
+  const isCylinder = ["prod-drink-coca", "prod-drink-sting", "prod-oil-simply", "prod-produce-cucumber"].includes(product.id);
+  const isSphere = ["prod-produce-apple", "prod-produce-lemon", "prod-produce-avocado", "prod-produce-tomato"].includes(product.id);
+  const isCap = product.id === "prod-apparel-cap";
 
   return (
-    <Canvas camera={{ position: [0, size * 0.25, size * 3.2], fov: 40 }}>
+    <Canvas dpr={[1, 1.8]} camera={{ position: [0, size * 0.25, size * 3.2], fov: 40 }}>
       <ambientLight intensity={1.6} />
       <directionalLight position={[2, 3, 4]} intensity={3} />
       <directionalLight position={[-2, 1, -2]} intensity={1.4} />
       <Center>
         <mesh>
-          {isCylinder
-            ? <cylinderGeometry args={[width / 2, width / 2, height, 32]} />
-            : <boxGeometry args={[width, height, depth]} />}
-          <meshStandardMaterial map={hasTexture ? texture : undefined} color={hasTexture ? "#ffffff" : product.color} roughness={0.35} metalness={isCylinder ? 0.3 : 0.05} />
+          {isCylinder ? (
+            <cylinderGeometry args={[width / 2, width / 2, height, 28]} />
+          ) : isSphere ? (
+            <sphereGeometry args={[Math.min(width, depth) / 2, 24, 24]} />
+          ) : isCap ? (
+            <sphereGeometry args={[width / 2, 20, 14, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          ) : (
+            <boxGeometry args={[width, height, depth]} />
+          )}
+          <meshStandardMaterial map={hasTexture ? texture : undefined} color={hasTexture ? "#ffffff" : product.color} roughness={0.35} metalness={isCylinder ? 0.25 : 0.05} />
         </mesh>
       </Center>
       <PreviewControls autoRotate={autoRotate} resetVersion={resetVersion} size={size} />

@@ -12,14 +12,14 @@ export const App: React.FC = () => {
   const { mode, isCartOpen, setIsCartOpen } = useAppStore();
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-900 text-white flex flex-col font-sans select-none">
+    <div className="relative w-screen h-screen overflow-hidden bg-hyper-surface text-hyper-ink flex flex-col font-sans select-none">
       {/* 1. Header Navbar dùng chung cho cả 2D và 3D */}
       <HeaderNavbar />
 
       {/* 2. Nội dung chính: Tùy biến theo chế độ đang chọn */}
       <main className="flex-1 relative overflow-hidden">
         {mode === "2D" ? (
-          <div className="w-full h-full overflow-y-auto p-4 md:p-6 bg-slate-100 text-slate-800">
+          <div className="w-full h-full overflow-y-auto p-4 md:p-6 bg-hyper-surface text-hyper-ink">
             <QuickShopView />
           </div>
         ) : (

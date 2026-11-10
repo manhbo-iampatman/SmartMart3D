@@ -4,6 +4,7 @@ export type CheckoutPhase = "idle" | "scanning" | "payment" | "success";
 
 export interface CheckoutStoreState {
   phase: CheckoutPhase;
+  activeKioskId: string;
   currentItemIndex: number;
   scannedCount: number;
   scanProgress: number; // 0 to 1 for current item animation
@@ -12,6 +13,7 @@ export interface CheckoutStoreState {
   paymentMethod: "vietqr" | "cod";
 
   // Actions
+  setActiveKioskId: (kioskId: string) => void;
   startCheckout: () => void;
   setScanProgress: (progress: number) => void;
   advanceToNextItem: (totalItems: number) => void;
@@ -26,12 +28,15 @@ export const generateOrderCode = (): string =>
 
 export const useCheckoutStore = create<CheckoutStoreState>((set) => ({
   phase: "idle",
+  activeKioskId: "checkout-04",
   currentItemIndex: 0,
   scannedCount: 0,
   scanProgress: 0,
   isAutoScanning: false,
   orderCode: generateOrderCode(),
   paymentMethod: "vietqr",
+
+  setActiveKioskId: (activeKioskId: string) => set({ activeKioskId }),
 
   startCheckout: () => {
     set({

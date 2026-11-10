@@ -39,11 +39,11 @@ describe("App - Tích hợp Hệ thống Hybrid Dual-Mode 2D <-> 3D (Phase 1)", 
     expect(screen.getByText(/SmartMart/i)).toBeInTheDocument();
     expect(screen.getByText("Việt Nam")).toBeInTheDocument();
 
-    // Màn hình 2D QuickShopView
+    // Màn hình 2D QuickShopView hợp nhất danh mục 2D <-> 3D (24 sản phẩm)
     expect(
       screen.getByText(/Mô hình Mua Sắm Lai \(Hybrid 2D & 3D\) đầu tiên tại Việt Nam/i)
     ).toBeInTheDocument();
-    expect(screen.getByText("Danh Sách Nhu Yếu Phẩm (12)")).toBeInTheDocument();
+    expect(screen.getByText("Danh Sách Nhu Yếu Phẩm (24)")).toBeInTheDocument();
 
     // 3D Scene không hiển thị khi ở 2D
     expect(screen.queryByTestId("scene-3d-mock")).not.toBeInTheDocument();
@@ -66,7 +66,7 @@ describe("App - Tích hợp Hệ thống Hybrid Dual-Mode 2D <-> 3D (Phase 1)", 
     const btn2D = screen.getByRole("button", { name: /mua nhanh \(2d\)/i });
     fireEvent.click(btn2D);
     expect(screen.queryByTestId("scene-3d-mock")).not.toBeInTheDocument();
-    expect(screen.getByText("Danh Sách Nhu Yếu Phẩm (12)")).toBeInTheDocument();
+    expect(screen.getByText("Danh Sách Nhu Yếu Phẩm (24)")).toBeInTheDocument();
   });
 
   it("TIÊU CHÍ NGHIỆM THU GIAI ĐOẠN 1: Thêm 2 gói mì ở 2D -> Chuyển sang 3D -> Giỏ hàng vẫn lưu đúng 2 gói mì và tổng tiền 9.000 VNĐ", () => {

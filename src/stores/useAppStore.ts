@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { AppMode, Product } from "../types";
 import { useNavigationStore } from "./useNavigationStore";
 import { getShelfApproach } from "../utils/pathfinding";
+import type { CameraPreset } from "../data/cameraPresets";
 
 function shelfDestination(product: Product | null) {
   const position = product?.has3D ? product.shelfLocation?.worldPos : undefined;
@@ -54,6 +55,12 @@ interface AppState {
   fastTravelTarget: { x: number; z: number; heading?: number; label?: string } | null;
   setFastTravelTarget: (target: { x: number; z: number; heading?: number; label?: string } | null) => void;
   triggerFastTravel: (x: number, z: number, heading?: number, label?: string) => void;
+
+  isOverviewMode: boolean;
+  setIsOverviewMode: (overview: boolean) => void;
+  activePresetTarget: CameraPreset | null;
+  setActivePresetTarget: (preset: CameraPreset | null) => void;
+  activateCameraPreset: (preset: CameraPreset) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -118,6 +125,8 @@ export const useAppStore = create<AppState>((set) => ({
         hoveredProduct: null,
         hoveredDistance: null,
         activeNavigationProduct: product,
+        isOverviewMode: false,
+        activePresetTarget: null,
       });
     } else {
       useNavigationStore.getState().setDestination(null);
@@ -127,6 +136,8 @@ export const useAppStore = create<AppState>((set) => ({
         hoveredProduct: null,
         hoveredDistance: null,
         activeNavigationProduct: null,
+        isOverviewMode: false,
+        activePresetTarget: null,
       });
     }
   },
@@ -134,17 +145,19 @@ export const useAppStore = create<AppState>((set) => ({
     if (!product.has3D || !product.shelfLocation) {
       useNavigationStore.getState().setDestination(null);
       set({ mode: "2D", searchQuery: product.name, selectedCategory: "Tất cả",
-        activeNavigationProduct: null, target3DPosition: null, hoveredProduct: null, hoveredDistance: null });
+        activeNavigationProduct: null, target3DPosition: null, hoveredProduct: null, hoveredDistance: null,
+        isOverviewMode: false, activePresetTarget: null });
       return;
     }
     useNavigationStore.getState().setDestination(shelfDestination(product));
     set({ mode: "3D", activeNavigationProduct: product, target3DPosition: null,
-      hoveredProduct: null, hoveredDistance: null });
+      hoveredProduct: null, hoveredDistance: null, isOverviewMode: false, activePresetTarget: null });
   },
   openProductIn2D: (product) => {
     useNavigationStore.getState().setDestination(null);
     set({ mode: "2D", searchQuery: product.name, selectedCategory: "Tất cả", inspectingProduct: null,
-      activeNavigationProduct: null, target3DPosition: null, hoveredProduct: null, hoveredDistance: null });
+      activeNavigationProduct: null, target3DPosition: null, hoveredProduct: null, hoveredDistance: null,
+      isOverviewMode: false, activePresetTarget: null });
   },
 
   isAudioMuted: false,
@@ -161,6 +174,25 @@ export const useAppStore = create<AppState>((set) => ({
       activeNavigationProduct: null,
       target3DPosition: null,
       fastTravelTarget: { x, z, heading, label },
+      isOverviewMode: false,
+      activePresetTarget: null,
+    });
+  },
+
+  isOverviewMode: false,
+  setIsOverviewMode: (isOverviewMode) => set({ isOverviewMode }),
+  activePresetTarget: null,
+  setActivePresetTarget: (activePresetTarget) => set({ activePresetTarget }),
+  activateCameraPreset: (preset) => {
+    useNavigationStore.getState().setAutoWalking(false);
+    useNavigationStore.getState().setDestination(null);
+    set({
+      mode: "3D",
+      activeNavigationProduct: null,
+      target3DPosition: null,
+      fastTravelTarget: null,
+      isOverviewMode: Boolean(preset.hideCeiling || preset.isAerial),
+      activePresetTarget: preset,
     });
   },
 }));

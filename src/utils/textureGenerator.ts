@@ -446,3 +446,245 @@ export function getProductTextureById(productId: string): THREE.Texture | null {
   }
 }
 
+/**
+ * Texture sàn gỗ ghép thanh Birch Wood Parquet cho khu Thời trang (Phase 4)
+ */
+export function getBirchWoodTexture(): THREE.Texture {
+  if (textureCache.has("birch-wood")) return textureCache.get("birch-wood")!;
+
+  const { canvas, ctx } = createSafeCanvas(512, 512);
+  if (!ctx || !canvas) {
+    const fallback = new THREE.Texture();
+    textureCache.set("birch-wood", fallback);
+    return fallback;
+  }
+
+  // Nền gỗ Birch vàng kem ấm sáng
+  ctx.fillStyle = "#e3c396";
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Vẽ các thanh ván sàn ghép so le (Plank layout)
+  const rows = 8;
+  const plankH = 512 / rows;
+  const tones = ["#e7ca9f", "#dfb987", "#ead1ad", "#d7ae78", "#e2c091"];
+
+  for (let r = 0; r < rows; r++) {
+    const y = r * plankH;
+    const cols = 3;
+    const plankW = 512 / cols;
+    const stagger = (r % 2) * (plankW * 0.5);
+
+    for (let c = -1; c <= cols; c++) {
+      const x = c * plankW + stagger;
+      ctx.fillStyle = tones[(r * 3 + Math.abs(c)) % tones.length];
+      ctx.fillRect(x, y, plankW, plankH);
+
+      // Vân gỗ mảnh nhẹ
+      ctx.fillStyle = "rgba(146, 102, 52, 0.08)";
+      for (let g = 0; g < 6; g++) {
+        ctx.fillRect(x + 4, y + 6 + g * 10, plankW - 8, 2);
+      }
+
+      // Đường mạch ghép thanh gỗ
+      ctx.strokeStyle = "rgba(120, 80, 38, 0.25)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, plankW, plankH);
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(5, 6);
+  textureCache.set("birch-wood", texture);
+  return texture;
+}
+
+/**
+ * Texture lưới kim loại cắt alphaTest cho 12 xe đẩy lồng nhau trong CartCorral (Phase 5)
+ * Thay thế wireframe chồng lớp để loại bỏ overdraw.
+ */
+export function getWireMeshTexture(): THREE.Texture {
+  if (textureCache.has("wire-mesh")) return textureCache.get("wire-mesh")!;
+
+  const { canvas, ctx } = createSafeCanvas(256, 256);
+  if (!ctx || !canvas) {
+    const fallback = new THREE.Texture();
+    textureCache.set("wire-mesh", fallback);
+    return fallback;
+  }
+
+  ctx.clearRect(0, 0, 256, 256);
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 10;
+
+  const step = 32;
+  for (let i = 0; i <= 256; i += step) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, 256);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, i);
+    ctx.lineTo(256, i);
+    ctx.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(3, 2);
+  textureCache.set("wire-mesh", texture);
+  return texture;
+}
+
+/**
+ * Texture biển hiệu phẳng "Self checkout" nền cobalt hyper-primary #0052CC (Phase 5)
+ */
+export function getSelfCheckoutSignTexture(): THREE.Texture {
+  if (textureCache.has("self-checkout-sign")) return textureCache.get("self-checkout-sign")!;
+
+  const { canvas, ctx } = createSafeCanvas(512, 192);
+  if (!ctx || !canvas) {
+    const fallback = new THREE.Texture();
+    textureCache.set("self-checkout-sign", fallback);
+    return fallback;
+  }
+
+  ctx.fillStyle = "#0052CC";
+  ctx.fillRect(0, 0, 512, 192);
+
+  // Chỉ trắng tinh tế phía dưới
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(16, 168, 480, 6);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 62px 'Be Vietnam Pro', Arial, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("Self checkout", 256, 86);
+
+  ctx.fillStyle = "#dbeafe";
+  ctx.font = "bold 20px 'Be Vietnam Pro', Arial, sans-serif";
+  ctx.fillText("SMARTMART 3D · QUẦY TỰ THANH TOÁN", 256, 140);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  textureCache.set("self-checkout-sign", texture);
+  return texture;
+}
+
+/**
+ * Texture tranh tường "Fresh picks" theo chuẩn hypermarket (thuần SmartMart 3D)
+ */
+export function getFreshPicksMuralTexture(): THREE.Texture {
+  if (textureCache.has("mural-fresh-picks")) return textureCache.get("mural-fresh-picks")!;
+
+  const { canvas, ctx } = createSafeCanvas(512, 256);
+  if (!ctx || !canvas) {
+    const fallback = new THREE.Texture();
+    textureCache.set("mural-fresh-picks", fallback);
+    return fallback;
+  }
+
+  ctx.fillStyle = "#064e3b";
+  ctx.fillRect(0, 0, 512, 256);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 34px 'Be Vietnam Pro', Arial, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("Fresh picks", 28, 48);
+
+  ctx.fillStyle = "#a7f3d0";
+  ctx.font = "600 16px 'Be Vietnam Pro', Arial, sans-serif";
+  ctx.fillText("Nông sản tươi ngon mỗi ngày · VietGAP", 28, 72);
+
+  // 3 ô thẻ trắng trưng bày Táo Đỏ, Chanh Vàng, Bơ Xanh giống 06-checkout.webp
+  const cards = [
+    { x: 28, color: "#dc2626", leaf: "#15803d", label: "Táo Envy" },
+    { x: 186, color: "#facc15", leaf: "#16a34a", label: "Chanh Vàng" },
+    { x: 344, color: "#166534", leaf: "#4d7c0f", label: "Bơ Sáp 034" },
+  ];
+  for (const card of cards) {
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillRect(card.x, 90, 140, 126);
+
+    ctx.fillStyle = card.color;
+    ctx.beginPath();
+    ctx.arc(card.x + 70, 146, 30, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = card.leaf;
+    ctx.beginPath();
+    ctx.ellipse(card.x + 76, 114, 12, 6, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 13px 'Be Vietnam Pro', Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(card.label, card.x + 70, 202);
+  }
+
+  ctx.fillStyle = "#6ee7b7";
+  ctx.font = "bold 13px 'Be Vietnam Pro', Arial, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("SmartMart 3D · Khám phá quầy nông sản tươi", 28, 240);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  textureCache.set("mural-fresh-picks", texture);
+  return texture;
+}
+
+/**
+ * Texture tranh tường "Fill your pantry" theo chuẩn 06-checkout.webp (thuần SmartMart 3D)
+ */
+export function getFillYourPantryMuralTexture(): THREE.Texture {
+  if (textureCache.has("mural-fill-pantry")) return textureCache.get("mural-fill-pantry")!;
+
+  const { canvas, ctx } = createSafeCanvas(512, 256);
+  if (!ctx || !canvas) {
+    const fallback = new THREE.Texture();
+    textureCache.set("mural-fill-pantry", fallback);
+    return fallback;
+  }
+
+  ctx.fillStyle = "#78350f";
+  ctx.fillRect(0, 0, 512, 256);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 34px 'Be Vietnam Pro', Arial, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("Fill your pantry", 28, 48);
+
+  ctx.fillStyle = "#fde68a";
+  ctx.font = "600 16px 'Be Vietnam Pro', Arial, sans-serif";
+  ctx.fillText("Thực phẩm thiết yếu cho mọi gia đình", 28, 72);
+
+  // 3 ô thẻ trắng minh họa Dầu ăn, Mì/Pasta, Gạo ST25
+  const items = [
+    { x: 28, bg: "#f8fafc", accent: "#eab308", title: "Dầu Simply" },
+    { x: 186, bg: "#f8fafc", accent: "#0052CC", title: "Mì & Nui" },
+    { x: 344, bg: "#f8fafc", accent: "#ea580c", title: "Gạo ST25" },
+  ];
+  for (const item of items) {
+    ctx.fillStyle = item.bg;
+    ctx.fillRect(item.x, 90, 140, 126);
+
+    ctx.fillStyle = item.accent;
+    ctx.fillRect(item.x + 48, 110, 44, 68);
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 13px 'Be Vietnam Pro', Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(item.title, item.x + 70, 202);
+  }
+
+  ctx.fillStyle = "#fcd34d";
+  ctx.font = "bold 13px 'Be Vietnam Pro', Arial, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("SmartMart 3D · Hàng tiêu dùng mỗi ngày", 28, 240);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  textureCache.set("mural-fill-pantry", texture);
+  return texture;
+}
+

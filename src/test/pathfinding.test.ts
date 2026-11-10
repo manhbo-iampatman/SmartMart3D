@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ENTRANCE, PROMOTION_LAYOUT, STORE_LAYOUT, type NavigationLayout } from "../data/storeLayout";
-import { MOCK_PRODUCTS } from "../data/mockProducts";
+import { ENTRANCE, MAIN_CONCOURSE_ENTRANCE, PROMOTION_LAYOUT, STORE_LAYOUT, type NavigationLayout } from "../data/storeLayout";
+import { ALL_PRODUCTS } from "../data/catalog";
 import { findPath, floorDistance, getShelfApproach, isWalkable, isWalkableSegment, moveWithCollisions, pathLength } from "../utils/pathfinding";
 
 describe("A* và mặt bằng đi lại", () => {
@@ -23,7 +23,7 @@ describe("A* và mặt bằng đi lại", () => {
     expect(pathLength(path)).toBeGreaterThan(floorDistance(ENTRANCE, goal));
   });
 
-  it.each(MOCK_PRODUCTS.filter((product) => product.has3D))("tới được kệ $id và không đặt camera trong đảo/kệ", (product) => {
+  it.each(ALL_PRODUCTS.filter((product) => product.has3D))("tới được kệ/quầy $id (Tạp hóa, Nông sản, Thời trang) và không đặt camera trong vật cản", (product) => {
     const target = getShelfApproach(product.shelfLocation!.worldPos)!;
     expect(target).not.toBeNull();
     expect(isWalkable(target)).toBe(true);
@@ -75,5 +75,37 @@ describe("A* và mặt bằng đi lại", () => {
     expect(isWalkable(to)).toBe(true);
     expect(isWalkableSegment(from, to)).toBe(false);
     expect(moveWithCollisions(from, to)).toEqual(from);
+  });
+
+  it("ngăn đi xuyên qua giá treo quần áo và bàn phụ kiện ở khu Thời trang (Phase 4)", () => {
+    const northOfRack = { x: 8.0, z: 1.4 };
+    const southOfRack = { x: 8.0, z: 3.4 };
+    expect(isWalkable(northOfRack)).toBe(true);
+    expect(isWalkable(southOfRack)).toBe(true);
+    expect(isWalkableSegment(northOfRack, southOfRack)).toBe(false);
+    expect(moveWithCollisions(northOfRack, southOfRack)).toEqual(northOfRack);
+  });
+
+  it("ngăn đi xuyên Dãy Kiosk Sảnh Nam và Chuồng Xe Đẩy (Phase 5) và tìm đường vòng hợp lệ", () => {
+    // Tâm cánh Kiosk Tây (-7.75, 17.0) và CartCorral (-15.5, 21.5) không đi vào được
+    expect(isWalkable({ x: -7.75, z: 17.0 })).toBe(false);
+    expect(isWalkable({ x: 7.75, z: 17.0 })).toBe(false);
+    expect(isWalkable({ x: -15.5, z: 21.5 })).toBe(false);
+
+    // Chặn va chạm khi bước xuyên qua Kiosk cánh Tây
+    const northOfKiosk = { x: -6.5, z: 14.8 };
+    const southOfKiosk = { x: -6.5, z: 18.8 };
+    expect(isWalkable(northOfKiosk)).toBe(true);
+    expect(isWalkable(southOfKiosk)).toBe(true);
+    expect(isWalkableSegment(northOfKiosk, southOfKiosk)).toBe(false);
+    expect(moveWithCollisions(northOfKiosk, southOfKiosk)).toEqual(northOfKiosk);
+
+    // Các landmark mới và trục chính đều đi bộ được & tìm tuyến vòng thông suốt từ Sảnh Chính
+    const cartApproach = { x: -15.5, z: 19.2 };
+    expect(isWalkable(cartApproach)).toBe(true);
+    expect(isWalkable({ x: 0, z: -3.4 })).toBe(true);
+    const pathToCorral = findPath(MAIN_CONCOURSE_ENTRANCE, cartApproach)!;
+    expect(pathToCorral).not.toBeNull();
+    pathToCorral.slice(1).forEach((point, index) => expect(isWalkableSegment(pathToCorral[index], point)).toBe(true));
   });
 });

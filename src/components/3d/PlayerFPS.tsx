@@ -3,6 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useAppStore } from "../../stores/useAppStore";
 import { useNavigationStore } from "../../stores/useNavigationStore";
+import { MAIN_CONCOURSE_ENTRANCE } from "../../data/storeLayout";
 import { floorDistance, getShelfApproach, moveWithCollisions } from "../../utils/pathfinding";
 import {
   getWalkDisplacement,
@@ -17,6 +18,7 @@ import {
   updateFreezerHum,
   stopAllSupermarketSounds,
 } from "../../utils/supermarketAudio";
+import { notifyCameraLodUpdate } from "../../utils/lodCulling";
 
 interface FastTravelTransition {
   fromPos: THREE.Vector3;
@@ -31,6 +33,7 @@ export const PlayerFPS: React.FC = () => {
   const { camera, gl, scene } = useThree();
   const target = useAppStore((state) => state.target3DPosition);
   const fastTravelTarget = useAppStore((state) => state.fastTravelTarget);
+  const activePresetTarget = useAppStore((state) => state.activePresetTarget);
   const blocked = useAppStore(isSpatialInputBlocked);
   const keys = useRef<Record<string, boolean>>({});
   const displacement = useRef(new THREE.Vector3());
@@ -89,6 +92,29 @@ export const PlayerFPS: React.FC = () => {
     useNavigationStore.getState().setAutoWalking(false);
     playTeleportWhoosh();
   }, [fastTravelTarget, camera]);
+
+  useEffect(() => {
+    if (!activePresetTarget) return;
+    const toPos = new THREE.Vector3(...activePresetTarget.position);
+    const lookTarget = new THREE.Vector3(...activePresetTarget.lookAt);
+    const mat = new THREE.Matrix4().lookAt(toPos, lookTarget, new THREE.Vector3(0, 1, 0));
+    const targetQuat = new THREE.Quaternion().setFromRotationMatrix(mat);
+    if ("fov" in camera && typeof (camera as THREE.PerspectiveCamera).updateProjectionMatrix === "function") {
+      (camera as THREE.PerspectiveCamera).fov = activePresetTarget.fov;
+      (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+    }
+    fastTravel.current = {
+      fromPos: camera.position.clone(),
+      toPos,
+      fromQuat: camera.quaternion.clone(),
+      toQuat: targetQuat,
+      elapsed: 0,
+      duration: 0.9,
+    };
+    keys.current = {};
+    useNavigationStore.getState().setAutoWalking(false);
+    playTeleportWhoosh();
+  }, [activePresetTarget, camera]);
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -223,6 +249,7 @@ export const PlayerFPS: React.FC = () => {
     keys.current = {};
     dragging.current = false;
     useNavigationStore.getState().setAutoWalking(false);
+    stopAllSupermarketSounds();
     if (gl.domElement.ownerDocument.pointerLockElement === gl.domElement) {
       gl.domElement.ownerDocument.exitPointerLock?.();
     }
@@ -230,6 +257,7 @@ export const PlayerFPS: React.FC = () => {
   }, [blocked, gl]);
 
   useFrame((_, delta) => {
+    notifyCameraLodUpdate(camera.position);
     if (isSpatialInputBlocked(useAppStore.getState()) || isEditingText(gl.domElement.ownerDocument.activeElement)) return;
 
     // 1. Quản lý hoạt cảnh bay mượt Fast-Travel
@@ -246,16 +274,33 @@ export const PlayerFPS: React.FC = () => {
         camera.quaternion.copy(fastTravel.current.toQuat);
         fastTravel.current = null;
         useAppStore.getState().setFastTravelTarget(null);
+        useAppStore.getState().setActivePresetTarget(null);
         publishPose(true);
       }
       return;
     }
 
+    const isOverview = useAppStore.getState().isOverviewMode;
     const vMove = useAppStore.getState().virtualMove;
     const keyForward = Number(!!(keys.current.KeyW || keys.current.ArrowUp)) - Number(!!(keys.current.KeyS || keys.current.ArrowDown));
     const keyRight = Number(!!(keys.current.KeyD || keys.current.ArrowRight)) - Number(!!(keys.current.KeyA || keys.current.ArrowLeft));
     const forward = keyForward !== 0 ? keyForward : vMove.forward;
     const right = keyRight !== 0 ? keyRight : vMove.right;
+
+    // Khi đang ở góc chim bay toàn cảnh (01-overview), giữ cao độ bay trên cao cho tới khi bấm di chuyển về sàn
+    if (isOverview) {
+      if (forward !== 0 || right !== 0) {
+        useAppStore.getState().setIsOverviewMode(false);
+        camera.position.set(MAIN_CONCOURSE_ENTRANCE.x, 1.65, MAIN_CONCOURSE_ENTRANCE.z);
+        camera.lookAt(0, 1.65, 0);
+        if ("fov" in camera && typeof (camera as THREE.PerspectiveCamera).updateProjectionMatrix === "function") {
+          (camera as THREE.PerspectiveCamera).fov = 65;
+          (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+        }
+        publishPose(true);
+      }
+      return;
+    }
     const navigation = useNavigationStore.getState();
     const wasAutoWalking = navigation.autoWalking;
     if ((forward !== 0 || right !== 0) && wasAutoWalking) {

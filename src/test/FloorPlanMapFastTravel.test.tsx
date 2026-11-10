@@ -64,6 +64,42 @@ describe("FloorPlanMap - Bản đồ tương tác & Fast-Travel (Sprint 1)", () 
     });
   });
 
+  it("click khu Thời Trang kích hoạt dịch chuyển tới sàn gỗ khu may mặc (Phase 4)", () => {
+    const handleClose = vi.fn();
+    render(<FloorPlanMap onClose={handleClose} />);
+
+    const apparelBtn = screen.getByTitle("Dịch chuyển nhanh đến Thời Trang");
+    fireEvent.click(apparelBtn);
+
+    expect(useAppStore.getState().fastTravelTarget).toEqual({
+      x: 11.0,
+      z: 7.5,
+      heading: -Math.PI / 2,
+      label: "Thời Trang",
+    });
+  });
+
+  it("click Kiosk Sảnh Nam và Chuồng Xe Đẩy kích hoạt dịch chuyển tới khu Thanh toán Phase 5", () => {
+    const handleClose = vi.fn();
+    render(<FloorPlanMap onClose={handleClose} />);
+
+    fireEvent.click(screen.getByTitle("Dịch chuyển nhanh đến Kiosk Sảnh Nam"));
+    expect(useAppStore.getState().fastTravelTarget).toEqual({
+      x: -6.5,
+      z: 14.8,
+      heading: Math.PI,
+      label: "Kiosk Sảnh Nam",
+    });
+
+    fireEvent.click(screen.getByTitle("Dịch chuyển nhanh đến Chuồng Xe Đẩy"));
+    expect(useAppStore.getState().fastTravelTarget).toEqual({
+      x: -15.5,
+      z: 19.2,
+      heading: Math.PI,
+      label: "Chuồng Xe Đẩy",
+    });
+  });
+
   it("nhấn phím Escape đóng bản đồ khi không mở modal", () => {
     const handleClose = vi.fn();
     render(<FloorPlanMap onClose={handleClose} />);

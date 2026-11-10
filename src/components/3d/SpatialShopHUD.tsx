@@ -9,7 +9,7 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
-import { MOCK_PRODUCTS } from "../../data/mockProducts";
+import { ALL_PRODUCTS } from "../../data/catalog";
 import { useAppStore } from "../../stores/useAppStore";
 import { useCartStore } from "../../stores/useCartStore";
 import { matchesProduct } from "../../utils/productSearch";
@@ -32,7 +32,7 @@ export const SpatialShopHUD: React.FC = () => {
   const totalItems = useCartStore((state) => state.getTotalItems());
   const totalVND = useCartStore((state) => state.getTotalVND());
 
-  const catalog = MOCK_PRODUCTS;
+  const catalog = ALL_PRODUCTS;
   const categories = useMemo(
     () => [
       ALL_CATEGORIES,
@@ -93,8 +93,8 @@ export const SpatialShopHUD: React.FC = () => {
             }}
             className={`h-10 px-3 rounded-xl border flex items-center gap-2 text-xs font-bold transition-colors ${
               isMapOpen
-                ? "bg-blue-600 border-blue-600 text-white"
-                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                ? "bg-hyper-primary border-hyper-primary text-white"
+                : "bg-hyper-card border-hyper-border text-hyper-ink hover:bg-hyper-surface"
             }`}
           >
             <MapIcon className="w-4 h-4" />
@@ -122,7 +122,7 @@ export const SpatialShopHUD: React.FC = () => {
           <button
             aria-label={`Mở giỏ hàng, ${totalItems} sản phẩm`}
             onClick={() => setIsCartOpen(true)}
-            className="h-10 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
+            className="h-10 px-3.5 rounded-xl bg-hyper-fresh hover:bg-hyper-fresh-hover text-white flex items-center gap-2 shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
           >
             <ShoppingCart className="w-4 h-4" />
             <span className="font-black text-xs whitespace-nowrap tabular-nums">
@@ -197,7 +197,7 @@ export const SpatialShopHUD: React.FC = () => {
       {totalItems > 0 && (
         <button
           onClick={() => setIsCheckoutOpen(true)}
-          className="absolute right-4 bottom-20 pointer-events-auto rounded-2xl bg-orange-600 hover:bg-orange-500 text-white px-4 py-3 shadow-xl shadow-orange-600/30 flex items-center gap-2 text-xs font-black transition-all active:scale-95"
+          className="absolute right-4 bottom-16 pointer-events-auto rounded-2xl bg-hyper-accent hover:bg-hyper-accent-hover text-white px-4 py-3 shadow-xl shadow-orange-600/25 flex items-center gap-2 text-xs font-black transition-all active:scale-95"
         >
           <ScanLine className="w-4 h-4" />
           Tới quầy thanh toán

@@ -8,6 +8,7 @@ import { useAppStore } from "../stores/useAppStore";
 import { useNavigationStore } from "../stores/useNavigationStore";
 import { getShelfApproach, isWalkable } from "../utils/pathfinding";
 import { WALK_REQUEST_EVENT } from "../utils/spatialInteraction";
+import * as supermarketAudio from "../utils/supermarketAudio";
 
 const fiber = vi.hoisted(() => ({
   state: null as unknown as RootState,
@@ -160,5 +161,13 @@ describe("PlayerFPS - trạng thái điều khiển khi mua sắm", () => {
     }
     expect(useNavigationStore.getState().status).toBe("arrived");
     expect(frames).toBeLessThan(300);
+  });
+
+  it("dừng toàn bộ âm thanh xe đẩy khi mở Checkout / bị chặn điều khiển không gian", () => {
+    const stopSpy = vi.spyOn(supermarketAudio, "stopAllSupermarketSounds");
+    render(<PlayerFPS />);
+    act(() => useAppStore.getState().setIsCheckoutOpen(true));
+    expect(stopSpy).toHaveBeenCalled();
+    stopSpy.mockRestore();
   });
 });

@@ -20,7 +20,7 @@ function getAudioContext(): AudioContext | null {
     try {
       audioContext = new window.AudioContext();
       masterGain = audioContext.createGain();
-      masterGain.gain.setValueAtTime(1.0, audioContext.currentTime);
+      masterGain.gain.setValueAtTime(checkMuted() ? 0.0001 : 1.0, audioContext.currentTime);
       masterGain.connect(audioContext.destination);
     } catch {
       return null;
@@ -32,10 +32,23 @@ function getAudioContext(): AudioContext | null {
 function getMasterGain(ctx: AudioContext): GainNode {
   if (!masterGain) {
     masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(1.0, ctx.currentTime);
+    masterGain.gain.setValueAtTime(checkMuted() ? 0.0001 : 1.0, ctx.currentTime);
     masterGain.connect(ctx.destination);
   }
   return masterGain;
+}
+
+/** Mở khóa Web Audio Context an toàn trong sự kiện click / keydown của người dùng */
+export function unlockAudioContext(): void {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  try {
+    if (ctx.state === "suspended" && typeof ctx.resume === "function") {
+      void ctx.resume().catch(() => {});
+    }
+  } catch {
+    /* Safe ignore */
+  }
 }
 
 function checkMuted(): boolean {
@@ -115,10 +128,10 @@ function startCartRolling(): void {
   };
 
   if (ctx.state === "suspended") {
-    void ctx.resume().then(init).catch(() => {});
-  } else {
-    init();
+    // Chờ tương tác gesture mở khóa AudioContext, tránh lặp promise từ useFrame
+    return;
   }
+  init();
 }
 
 function stopCartRolling(): void {
@@ -241,10 +254,9 @@ export function playCartDropClack(): void {
   };
 
   if (ctx.state === "suspended") {
-    void ctx.resume().then(play).catch(() => {});
-  } else {
-    play();
+    return;
   }
+  play();
 }
 
 /**
@@ -293,10 +305,9 @@ export function playTeleportWhoosh(): void {
   };
 
   if (ctx.state === "suspended") {
-    void ctx.resume().then(play).catch(() => {});
-  } else {
-    play();
+    return;
   }
+  play();
 }
 
 /**
@@ -337,10 +348,9 @@ export function playLaserBeepSound(): void {
   };
 
   if (ctx.state === "suspended") {
-    void ctx.resume().then(play).catch(() => {});
-  } else {
-    play();
+    return;
   }
+  play();
 }
 
 /**
@@ -390,10 +400,9 @@ export function playReceiptPrintSound(): void {
   };
 
   if (ctx.state === "suspended") {
-    void ctx.resume().then(play).catch(() => {});
-  } else {
-    play();
+    return;
   }
+  play();
 }
 
 /**
@@ -438,10 +447,9 @@ export function playPaymentSuccessFanfare(): void {
   };
 
   if (ctx.state === "suspended") {
-    void ctx.resume().then(play).catch(() => {});
-  } else {
-    play();
+    return;
   }
+  play();
 }
 
 /** Dọn dẹp toàn bộ âm thanh liên tục khi blur hoặc thoát */
