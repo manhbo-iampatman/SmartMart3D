@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { SHELF_LAYOUT, EXTENDED_AISLE_LAYOUT } from "../../data/storeLayout";
 import { applyMatricesToInstancedMesh } from "../../utils/instancingHelper";
 import { useCameraLod } from "../../utils/lodCulling";
+import { getPegboardTexture } from "../../utils/textureGenerator";
 
 export interface GondolaSpec {
   position: [number, number, number];
@@ -23,6 +24,7 @@ interface SingleGondolaProps extends GondolaSpec {}
  */
 const GondolaInstancedGroup: React.FC<{ specs: readonly GondolaSpec[] }> = ({ specs }) => {
   const solidRef = useRef<THREE.InstancedMesh>(null);
+  const pegboardRef = useRef<THREE.InstancedMesh>(null);
   const underglowRef = useRef<THREE.InstancedMesh>(null);
 
   const shelfDepth = SHELF_LAYOUT.depth;
@@ -30,14 +32,22 @@ const GondolaInstancedGroup: React.FC<{ specs: readonly GondolaSpec[] }> = ({ sp
   const tierYPositions = useMemo(() => [0.45, 0.95, 1.45, 1.95], []);
 
   const unitBox = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
+  const pegboardTex = useMemo(() => getPegboardTexture(), []);
   const materials = useMemo(() => ({
-    solidVertex: new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.3, metalness: 0.2 }),
-    underglow: new THREE.MeshStandardMaterial({ color: "#ffffff", emissive: "#f8fafc", emissiveIntensity: 0.85 }),
-  }), []);
+    solidVertex: new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.46, metalness: 0.08 }),
+    pegboard: new THREE.MeshStandardMaterial({
+      ...(pegboardTex.image ? { map: pegboardTex } : {}),
+      color: pegboardTex.image ? "#ffffff" : "#eef2f6",
+      roughness: 0.62,
+      metalness: 0.06,
+    }),
+    underglow: new THREE.MeshStandardMaterial({ color: "#ffffff", emissive: "#f8fafc", emissiveIntensity: 0.4 }),
+  }), [pegboardTex]);
 
   const batches = useMemo(() => {
     const solids: THREE.Matrix4[] = [];
     const solidColors: string[] = [];
+    const pegboards: THREE.Matrix4[] = [];
     const underglows: THREE.Matrix4[] = [];
 
     const gMat = new THREE.Matrix4();
@@ -55,6 +65,15 @@ const GondolaInstancedGroup: React.FC<{ specs: readonly GondolaSpec[] }> = ({ sp
       local.compose(p, q, s);
       solids.push(new THREE.Matrix4().multiplyMatrices(parentMat, local));
       solidColors.push(color);
+    };
+
+    const pushPegboard = (parentMat: THREE.Matrix4, lx: number, ly: number, lz: number, sx: number, sy: number, sz: number) => {
+      e.set(0, 0, 0);
+      q.setFromEuler(e);
+      p.set(lx, ly, lz);
+      s.set(sx, sy, sz);
+      local.compose(p, q, s);
+      pegboards.push(new THREE.Matrix4().multiplyMatrices(parentMat, local));
     };
 
     const pushGlow = (parentMat: THREE.Matrix4, lx: number, ly: number, lz: number, sx: number, sy: number, sz: number) => {
@@ -75,8 +94,8 @@ const GondolaInstancedGroup: React.FC<{ specs: readonly GondolaSpec[] }> = ({ sp
         new THREE.Vector3(1, 1, 1)
       );
 
-      // Tấm lưng tôn đục lỗ
-      pushSolid(gMat, 0, shelfHeight / 2 + 0.05, 0, 0.06, shelfHeight - 0.15, length, "#f1f5f9");
+      // Tấm lưng tôn đục lỗ Pegboard
+      pushPegboard(gMat, 0, shelfHeight / 2 + 0.05, 0, 0.06, shelfHeight - 0.15, length);
 
       // Cột trụ & vách ngăn đứng chia khoang 1.2m
       const bayDividers: number[] = [];
@@ -85,13 +104,13 @@ const GondolaInstancedGroup: React.FC<{ specs: readonly GondolaSpec[] }> = ({ sp
         bayDividers.push(Math.round(z * 100) / 100);
       }
       for (const z of [-halfLen, ...bayDividers, halfLen]) {
-        pushSolid(gMat, 0, shelfHeight / 2 + 0.05, z, shelfDepth + 0.04, shelfHeight + 0.1, 0.05, "#1e293b");
-        pushSolid(gMat, -shelfDepth / 2 - 0.01, shelfHeight / 2 + 0.05, z, 0.01, shelfHeight + 0.08, 0.02, "#64748b");
-        pushSolid(gMat, shelfDepth / 2 + 0.01, shelfHeight / 2 + 0.05, z, 0.01, shelfHeight + 0.08, 0.02, "#64748b");
+        pushSolid(gMat, 0, shelfHeight / 2 + 0.05, z, shelfDepth + 0.04, shelfHeight + 0.1, 0.05, "#e2e8f0");
+        pushSolid(gMat, -shelfDepth / 2 - 0.01, shelfHeight / 2 + 0.05, z, 0.01, shelfHeight + 0.08, 0.02, "#cbd5e1");
+        pushSolid(gMat, shelfDepth / 2 + 0.01, shelfHeight / 2 + 0.05, z, 0.01, shelfHeight + 0.08, 0.02, "#cbd5e1");
       }
 
-      // Chân đế & kickplate xanh SmartMart
-      pushSolid(gMat, 0, 0.09, 0, shelfDepth + 0.08, 0.18, length, "#1e293b");
+      // Chân đế & kickplate xanh SmartMart (sáng sạch không bết đen)
+      pushSolid(gMat, 0, 0.09, 0, shelfDepth + 0.08, 0.18, length, "#cbd5e1");
       pushSolid(gMat, -shelfDepth / 2 - 0.042, 0.09, 0, 0.008, 0.14, length - 0.02, "#0071dc");
       pushSolid(gMat, shelfDepth / 2 + 0.042, 0.09, 0, 0.008, 0.14, length - 0.02, "#0071dc");
 
@@ -118,34 +137,48 @@ const GondolaInstancedGroup: React.FC<{ specs: readonly GondolaSpec[] }> = ({ sp
               new THREE.Vector3(1, 1, 1)
             )
           );
-          pushSolid(endMat, 0, shelfHeight / 2 + 0.05, 0, shelfDepth, shelfHeight + 0.1, 0.08, "#1e293b");
-          pushSolid(endMat, 0, 0.09, 0.18, shelfDepth, 0.18, 0.36, "#1e293b");
+          pushSolid(endMat, 0, shelfHeight / 2 + 0.05, 0, shelfDepth, shelfHeight + 0.1, 0.08, "#e2e8f0");
+          pushSolid(endMat, 0, 0.09, 0.18, shelfDepth, 0.18, 0.36, "#cbd5e1");
           for (const y of tierYPositions) {
             pushSolid(endMat, 0, y, 0.2, shelfDepth - 0.04, 0.035, 0.38, "#f8fafc");
             pushSolid(endMat, 0, y - 0.012, 0.395, shelfDepth - 0.04, 0.042, 0.015, "#f8fafc");
           }
-          pushSolid(endMat, 0, 2.35, 0.12, 0.72, 0.34, 0.04, "#0071dc");
+          // Rollback Promo header vàng/xanh tại các đầu hồi đối diện Cross-Aisle Z=0
+          const isFacingCrossAisle =
+            Math.abs(spec.position[2]) < 6 &&
+            ((spec.position[2] > 0 && endIdx === 0) || (spec.position[2] < 0 && endIdx === 1));
+          pushSolid(endMat, 0, 2.35, 0.12, 0.72, 0.34, 0.04, isFacingCrossAisle ? "#facc15" : "#0071dc");
           pushSolid(endMat, 0, 2.35, 0.142, 0.74, 0.36, 0.005, "#f8fafc");
         }
       }
     }
 
-    return { solids, solidColors, underglows };
+    return { solids, solidColors, pegboards, underglows };
   }, [specs, shelfDepth, shelfHeight, tierYPositions]);
 
   useLayoutEffect(() => {
-    applyMatricesToInstancedMesh(solidRef.current, batches.solids, 0, batches.solidColors);
-    applyMatricesToInstancedMesh(underglowRef.current, batches.underglows);
+    applyMatricesToInstancedMesh(solidRef.current, batches.solids, 0, batches.solidColors, {
+      staticTransform: true,
+      enableLayer1: true,
+    });
+    applyMatricesToInstancedMesh(pegboardRef.current, batches.pegboards, 0, undefined, {
+      staticTransform: true,
+      enableLayer1: true,
+    });
+    applyMatricesToInstancedMesh(underglowRef.current, batches.underglows, 0, undefined, {
+      staticTransform: true,
+    });
   }, [batches]);
 
-  // LOD Distance Culling: Ẩn dải LED hắt gầm khi camera xa > 20m (qua lodCulling an toàn JSDOM)
+  // LOD Distance Culling: Ẩn dải LED hắt gầm khi camera xa > 18m (qua lodCulling an toàn JSDOM)
   useCameraLod([
-    { ref: underglowRef, center: [0, 0, 0], maxDistance: 20 },
+    { ref: underglowRef, center: [0, 0, 0], maxDistance: 18 },
   ]);
 
   return (
     <group>
       <instancedMesh ref={solidRef} args={[unitBox, materials.solidVertex, batches.solids.length]} castShadow receiveShadow />
+      <instancedMesh ref={pegboardRef} args={[unitBox, materials.pegboard, batches.pegboards.length]} castShadow receiveShadow />
       <instancedMesh ref={underglowRef} args={[unitBox, materials.underglow, batches.underglows.length]} userData={{ ignoreProductRaycast: true }} />
     </group>
   );
@@ -226,32 +259,56 @@ export const OverheadLcdDisplay: React.FC<{
 };
 
 export const AisleGondola: React.FC = () => {
+  const signageGroupRef = useRef<THREE.Group>(null);
+
+  // 18 Block Kệ đồng bộ Phase 7 (6 trục X x 3 tầng Z: Nam +4.4, Bắc-Trung -4.4, Cực Bắc -15.6)
   const allGondolaSpecs = useMemo<GondolaSpec[]>(() => [
-    { aisleCode: "A01", categoryName: "NƯỚC GIẢI KHÁT & BIA", position: [-5.4, 0, 0], length: SHELF_LAYOUT.length },
-    { aisleCode: "A02", categoryName: "SỮA & CÀ PHÊ", position: [-2.6, 0, 0], length: SHELF_LAYOUT.length },
-    { aisleCode: "A03", categoryName: "BÁNH KẸO & SNACK", position: [2.6, 0, 0], length: SHELF_LAYOUT.length },
-    { aisleCode: "A04", categoryName: "GIA VỊ & NÔNG SẢN", position: [5.4, 0, 0], length: SHELF_LAYOUT.length },
-    { aisleCode: "A05", categoryName: "MÌ GÓI & THỰC PHẨM KHÔ", position: [-7.0, 0, EXTENDED_AISLE_LAYOUT.northCenterZ], length: EXTENDED_AISLE_LAYOUT.blockLength },
-    { aisleCode: "A06", categoryName: "MÌ GÓI & THỰC PHẨM KHÔ", position: [-7.0, 0, EXTENDED_AISLE_LAYOUT.southCenterZ], length: EXTENDED_AISLE_LAYOUT.blockLength },
-    { aisleCode: "A07", categoryName: "HÓA PHẨM & CHĂM SÓC", position: [-14.0, 0, EXTENDED_AISLE_LAYOUT.northCenterZ], length: EXTENDED_AISLE_LAYOUT.blockLength },
-    { aisleCode: "A08", categoryName: "HÓA PHẨM & CHĂM SÓC", position: [-14.0, 0, EXTENDED_AISLE_LAYOUT.southCenterZ], length: EXTENDED_AISLE_LAYOUT.blockLength },
+    // 4 dãy chính Tầng Bắc-Trung & Nam-Trung (mã A01..A04 cho đầu hồi chính)
+    { aisleCode: "A01", categoryName: "NƯỚC GIẢI KHÁT & BIA", position: [-5.4, 0, SHELF_LAYOUT.northCenterZ], length: SHELF_LAYOUT.length },
+    { aisleCode: "A02", categoryName: "SỮA & CÀ PHÊ", position: [-2.6, 0, SHELF_LAYOUT.northCenterZ], length: SHELF_LAYOUT.length },
+    { aisleCode: "A03", categoryName: "BÁNH KẸO & SNACK", position: [2.6, 0, SHELF_LAYOUT.northCenterZ], length: SHELF_LAYOUT.length },
+    { aisleCode: "A04", categoryName: "GIA VỊ & NÔNG SẢN", position: [5.4, 0, SHELF_LAYOUT.northCenterZ], length: SHELF_LAYOUT.length },
+    // Tầng Nam-Trung (A05..A08 giữ mã định danh tương thích test)
+    { aisleCode: "A05", categoryName: "NƯỚC GIẢI KHÁT & BIA", position: [-5.4, 0, SHELF_LAYOUT.southCenterZ], length: SHELF_LAYOUT.length },
+    { aisleCode: "A06", categoryName: "SỮA & CÀ PHÊ", position: [-2.6, 0, SHELF_LAYOUT.southCenterZ], length: SHELF_LAYOUT.length },
+    { aisleCode: "A07", categoryName: "BÁNH KẸO & SNACK", position: [2.6, 0, SHELF_LAYOUT.southCenterZ], length: SHELF_LAYOUT.length },
+    { aisleCode: "A08", categoryName: "GIA VỊ & NÔNG SẢN", position: [5.4, 0, SHELF_LAYOUT.southCenterZ], length: SHELF_LAYOUT.length },
+    // Cánh Tây (2 trục -13.2 & -16.6) x 2 tầng Trung
+    { aisleCode: "W01", categoryName: "MÌ GÓI & THỰC PHẨM KHÔ", position: [-13.2, 0, EXTENDED_AISLE_LAYOUT.northCenterZ], length: EXTENDED_AISLE_LAYOUT.blockLength },
+    { aisleCode: "W02", categoryName: "MÌ GÓI & THỰC PHẨM KHÔ", position: [-13.2, 0, EXTENDED_AISLE_LAYOUT.southCenterZ], length: EXTENDED_AISLE_LAYOUT.blockLength },
+    { aisleCode: "W03", categoryName: "HÓA PHẨM & CHĂM SÓC", position: [-16.6, 0, EXTENDED_AISLE_LAYOUT.northCenterZ], length: EXTENDED_AISLE_LAYOUT.blockLength },
+    { aisleCode: "W04", categoryName: "HÓA PHẨM & CHĂM SÓC", position: [-16.6, 0, EXTENDED_AISLE_LAYOUT.southCenterZ], length: EXTENDED_AISLE_LAYOUT.blockLength },
+    // Tầng Cực Bắc (-15.6m) lấp kín nửa Bắc theo 6 trục X (không phát sinh <Text> mới)
+    { aisleCode: "N01", categoryName: "HÓA PHẨM & CHĂM SÓC", position: [-16.6, 0, SHELF_LAYOUT.farNorthCenterZ], length: SHELF_LAYOUT.length },
+    { aisleCode: "N02", categoryName: "MÌ GÓI & THỰC PHẨM KHÔ", position: [-13.2, 0, SHELF_LAYOUT.farNorthCenterZ], length: SHELF_LAYOUT.length },
+    { aisleCode: "N03", categoryName: "ĐỒ UỐNG & NƯỚC NGỌT", position: [-5.4, 0, SHELF_LAYOUT.farNorthCenterZ], length: SHELF_LAYOUT.length },
+    { aisleCode: "N04", categoryName: "SỮA & NGŨ CỐC", position: [-2.6, 0, SHELF_LAYOUT.farNorthCenterZ], length: SHELF_LAYOUT.length },
+    { aisleCode: "N05", categoryName: "BÁNH KẸO & QUÀ TẶNG", position: [2.6, 0, SHELF_LAYOUT.farNorthCenterZ], length: SHELF_LAYOUT.length },
+    { aisleCode: "N06", categoryName: "GIA VỊ & DẦU ĂN", position: [5.4, 0, SHELF_LAYOUT.farNorthCenterZ], length: SHELF_LAYOUT.length },
   ], []);
+
+  // LOD 16m cho các biển <Text> đầu hồi chính (0 <Text> mới cho block N01..N06 / W01..W04)
+  useCameraLod([
+    { ref: signageGroupRef, center: [0, 0, 0], maxDistance: 16 },
+  ]);
 
   return (
     <group>
       <GondolaInstancedGroup specs={allGondolaSpecs} />
-      {allGondolaSpecs.map((spec) => (
-        <GondolaEndcapSignage key={spec.aisleCode} spec={spec} />
-      ))}
+      <group ref={signageGroupRef}>
+        {allGondolaSpecs.slice(0, 8).map((spec) => (
+          <GondolaEndcapSignage key={spec.aisleCode} spec={spec} />
+        ))}
+      </group>
       <OverheadLcdDisplay
-        position={[-4.0, 3.6, 4.0]}
+        position={[-4.0, 3.6, 4.4]}
         title="SmartMart ★ GROCERY FOCUS"
         itemName="Yến Mạch Úc Rolled Oats 500g"
         price="36.000 đ"
         tag="GIÁ TỐT MỖI NGÀY · CHẠM ĐỂ XEM"
       />
       <OverheadLcdDisplay
-        position={[4.0, 3.6, 4.0]}
+        position={[4.0, 3.6, 4.4]}
         title="SmartMart ★ FRESH PROMO"
         itemName="Bánh Choco-Pie Hộp 12 Cái"
         price="62.000 đ"

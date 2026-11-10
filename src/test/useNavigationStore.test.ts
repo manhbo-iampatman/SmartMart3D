@@ -36,7 +36,7 @@ describe("Vòng đời dẫn đường", () => {
   });
 
   it("không thể tự đi tới đích bị chặn và không báo đã đến chỉ vì đứng gần vật cản", () => {
-    useNavigationStore.getState().setDestination({ x: 0, z: 0.15 });
+    useNavigationStore.getState().setDestination({ x: -2.6, z: 4.4 });
     useNavigationStore.getState().setAutoWalking(true);
     expect(useNavigationStore.getState()).toMatchObject({ status: "unreachable", path: [], autoWalking: false, distance: null });
   });

@@ -26,14 +26,16 @@ const SingleProductInstancedMesh: React.FC<{
   const meshRef = useRef<THREE.InstancedMesh>(null);
 
   useLayoutEffect(() => {
-    applyMatricesToInstancedMesh(meshRef.current, config.matrices);
+    applyMatricesToInstancedMesh(meshRef.current, config.matrices, 0, undefined, {
+      staticTransform: true,
+      enableLayer1: true,
+    });
   }, [config.matrices]);
 
   return (
     <instancedMesh
       ref={meshRef}
       args={[config.geometry, sharedMaterial, config.matrices.length]}
-      castShadow
       receiveShadow
       userData={{ product: config.product }}
       onClick={(event) => event.stopPropagation()}
@@ -72,64 +74,96 @@ export const InstancedStock: React.FC = () => {
       list.push({
         product: vinamilk,
         geometry: remapGeometryToAtlasTile(new THREE.BoxGeometry(0.10, 0.26, 0.075), GROCERY_ATLAS_TILES["prod-milk-vinamilk"]),
-        matrices: generateBlockMatrices({ gondolaX: -2.6, zStart: -2.4, zEnd: -1.2, cols: 8, rows: 4, stack: 1, itemH: 0.26, isLeft: true }),
-        priceTagPos: [-2.17, 0.95, -1.8],
+        matrices: [
+          ...generateBlockMatrices({ gondolaX: -2.6, zStart: -6.8, zEnd: -5.6, cols: 8, rows: 4, stack: 1, itemH: 0.26, isLeft: true }),
+          ...generateBlockMatrices({ gondolaX: -13.2, zStart: -18.0, zEnd: -16.8, cols: 6, rows: 3, stack: 1, itemH: 0.26, isLeft: true }),
+          ...generateBlockMatrices({ gondolaX: -2.6, zStart: -18.0, zEnd: -16.8, cols: 6, rows: 3, stack: 1, itemH: 0.26, isLeft: true }),
+        ],
+        priceTagPos: [-2.17, 0.95, -6.2],
       });
     }
     if (haohao) {
       list.push({
         product: haohao,
         geometry: remapGeometryToAtlasTile(new THREE.BoxGeometry(0.095, 0.11, 0.055), GROCERY_ATLAS_TILES["prod-noodle-haohao"]),
-        matrices: generateBlockMatrices({ gondolaX: 5.4, zStart: -1.2, zEnd: 0.0, cols: 9, rows: 4, stack: 3, itemH: 0.11, isLeft: false }),
-        priceTagPos: [4.97, 0.95, -0.6],
+        matrices: [
+          ...generateBlockMatrices({ gondolaX: 5.4, zStart: -4.4, zEnd: -3.2, cols: 9, rows: 4, stack: 3, itemH: 0.11, isLeft: false }),
+          ...generateBlockMatrices({ gondolaX: -13.2, zStart: -5.6, zEnd: -4.4, cols: 8, rows: 3, stack: 2, itemH: 0.11, isLeft: false }),
+          ...generateBlockMatrices({ gondolaX: 5.4, zStart: -16.8, zEnd: -15.6, cols: 8, rows: 3, stack: 2, itemH: 0.11, isLeft: false }),
+        ],
+        priceTagPos: [4.97, 0.95, -3.8],
       });
     }
     if (coca) {
       list.push({
         product: coca,
         geometry: remapGeometryToAtlasTile(new THREE.CylinderGeometry(0.028, 0.028, 0.13, 14), GROCERY_ATLAS_TILES["prod-drink-coca"]),
-        matrices: generateBlockMatrices({ gondolaX: -5.4, zStart: -1.2, zEnd: 0.0, cols: 14, rows: 5, stack: 2, itemH: 0.13, isLeft: true }),
-        priceTagPos: [-4.97, 0.95, -0.6],
+        matrices: [
+          ...generateBlockMatrices({ gondolaX: -5.4, zStart: -4.4, zEnd: -3.2, cols: 14, rows: 5, stack: 2, itemH: 0.13, isLeft: true }),
+          ...generateBlockMatrices({ gondolaX: -16.6, zStart: 3.2, zEnd: 4.4, cols: 10, rows: 3, stack: 2, itemH: 0.13, isLeft: true }),
+          ...generateBlockMatrices({ gondolaX: -5.4, zStart: -15.6, zEnd: -14.4, cols: 10, rows: 3, stack: 2, itemH: 0.13, isLeft: true }),
+        ],
+        priceTagPos: [-4.97, 0.95, -3.8],
       });
     }
     if (g7) {
       list.push({
         product: g7,
         geometry: remapGeometryToAtlasTile(new THREE.BoxGeometry(0.10, 0.2, 0.07), GROCERY_ATLAS_TILES["prod-coffee-g7"]),
-        matrices: generateBlockMatrices({ gondolaX: -2.6, zStart: 1.2, zEnd: 2.4, cols: 8, rows: 4, stack: 2, itemH: 0.2, isLeft: true }),
-        priceTagPos: [-2.17, 0.95, 1.8],
+        matrices: [
+          ...generateBlockMatrices({ gondolaX: -2.6, zStart: -5.6, zEnd: -4.4, cols: 8, rows: 4, stack: 2, itemH: 0.2, isLeft: true }),
+          ...generateBlockMatrices({ gondolaX: -13.2, zStart: 4.4, zEnd: 5.6, cols: 7, rows: 3, stack: 2, itemH: 0.2, isLeft: true }),
+          ...generateBlockMatrices({ gondolaX: -2.6, zStart: -15.6, zEnd: -14.4, cols: 7, rows: 3, stack: 2, itemH: 0.2, isLeft: true }),
+        ],
+        priceTagPos: [-2.17, 0.95, -5.0],
       });
     }
     if (chocopie) {
       list.push({
         product: chocopie,
         geometry: remapGeometryToAtlasTile(new THREE.BoxGeometry(0.145, 0.16, 0.075), GROCERY_ATLAS_TILES["prod-snack-chocopie"]),
-        matrices: generateBlockMatrices({ gondolaX: 2.6, zStart: -2.4, zEnd: -1.2, cols: 6, rows: 4, stack: 2, itemH: 0.16, isLeft: false }),
-        priceTagPos: [2.17, 0.95, -1.8],
+        matrices: [
+          ...generateBlockMatrices({ gondolaX: 2.6, zStart: -6.8, zEnd: -5.6, cols: 6, rows: 4, stack: 2, itemH: 0.16, isLeft: false }),
+          ...generateBlockMatrices({ gondolaX: -16.6, zStart: -6.8, zEnd: -5.6, cols: 6, rows: 3, stack: 2, itemH: 0.16, isLeft: true }),
+          ...generateBlockMatrices({ gondolaX: 2.6, zStart: -18.0, zEnd: -16.8, cols: 6, rows: 3, stack: 2, itemH: 0.16, isLeft: false }),
+        ],
+        priceTagPos: [2.17, 0.95, -6.2],
       });
     }
     if (milo) {
       list.push({
         product: milo,
         geometry: remapGeometryToAtlasTile(new THREE.BoxGeometry(0.095, 0.13, 0.065), GROCERY_ATLAS_TILES["prod-drink-milo"]),
-        matrices: generateBlockMatrices({ gondolaX: 2.6, zStart: -1.2, zEnd: 0.0, cols: 9, rows: 4, stack: 2, itemH: 0.13, isLeft: false }),
-        priceTagPos: [2.17, 0.95, -0.6],
+        matrices: [
+          ...generateBlockMatrices({ gondolaX: 2.6, zStart: 2.0, zEnd: 3.2, cols: 9, rows: 4, stack: 2, itemH: 0.13, isLeft: false }),
+          ...generateBlockMatrices({ gondolaX: -13.2, zStart: -14.4, zEnd: -13.2, cols: 7, rows: 3, stack: 2, itemH: 0.13, isLeft: false }),
+          ...generateBlockMatrices({ gondolaX: 2.6, zStart: 4.4, zEnd: 5.6, cols: 7, rows: 3, stack: 2, itemH: 0.13, isLeft: false }),
+        ],
+        priceTagPos: [2.17, 0.95, 2.6],
       });
     }
     if (sting) {
       list.push({
         product: sting,
         geometry: remapGeometryToAtlasTile(new THREE.CylinderGeometry(0.028, 0.028, 0.16, 14), GROCERY_ATLAS_TILES["prod-drink-sting"]),
-        matrices: generateBlockMatrices({ gondolaX: -5.4, zStart: 0.0, zEnd: 1.2, cols: 14, rows: 5, stack: 2, itemH: 0.16, isLeft: true }),
-        priceTagPos: [-4.97, 0.95, 0.6],
+        matrices: [
+          ...generateBlockMatrices({ gondolaX: -5.4, zStart: 2.0, zEnd: 3.2, cols: 14, rows: 5, stack: 2, itemH: 0.16, isLeft: true }),
+          ...generateBlockMatrices({ gondolaX: -16.6, zStart: -15.6, zEnd: -14.4, cols: 10, rows: 3, stack: 2, itemH: 0.16, isLeft: true }),
+          ...generateBlockMatrices({ gondolaX: -5.4, zStart: 4.4, zEnd: 5.6, cols: 10, rows: 3, stack: 2, itemH: 0.16, isLeft: true }),
+        ],
+        priceTagPos: [-4.97, 0.95, 2.6],
       });
     }
     if (simply) {
       list.push({
         product: simply,
         geometry: remapGeometryToAtlasTile(new THREE.CylinderGeometry(0.038, 0.038, 0.26, 14), GROCERY_ATLAS_TILES["prod-oil-simply"]),
-        matrices: generateBlockMatrices({ gondolaX: 5.4, zStart: 1.2, zEnd: 2.4, cols: 10, rows: 3, stack: 1, itemH: 0.26, isLeft: false }),
-        priceTagPos: [4.97, 0.95, 1.8],
+        matrices: [
+          ...generateBlockMatrices({ gondolaX: 5.4, zStart: 2.0, zEnd: 3.2, cols: 10, rows: 3, stack: 1, itemH: 0.26, isLeft: false }),
+          ...generateBlockMatrices({ gondolaX: -13.2, zStart: 2.0, zEnd: 3.2, cols: 8, rows: 3, stack: 1, itemH: 0.26, isLeft: true }),
+          ...generateBlockMatrices({ gondolaX: 5.4, zStart: 4.4, zEnd: 5.6, cols: 8, rows: 3, stack: 1, itemH: 0.26, isLeft: false }),
+        ],
+        priceTagPos: [4.97, 0.95, 2.6],
       });
     }
 

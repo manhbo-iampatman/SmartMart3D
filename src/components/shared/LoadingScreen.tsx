@@ -1,20 +1,35 @@
 import React, { useEffect, useState } from "react";
 import { useProgress } from "@react-three/drei";
 import { Box, Sparkles, Smartphone, Keyboard } from "lucide-react";
+import { useAppStore } from "../../stores/useAppStore";
+
+interface LoadingScreenProps {
+  waitForCompile?: boolean;
+}
 
 /**
  * Màn hình tải (Loading Screen) mở đầu với hoạt cảnh giới thiệu siêu thị và tiến trình nạp (%)
- * Tự động tắt khi Three.js nạp xong tài nguyên (100%)
+ * Tự động tắt khi Three.js nạp & compile shader xong (100%)
  */
-export const LoadingScreen: React.FC = () => {
+export const LoadingScreen: React.FC<LoadingScreenProps> = ({ waitForCompile = false }) => {
   const { progress, active } = useProgress();
+  const isSceneCompiled = useAppStore((state) => state.isSceneCompiled);
+  const [compileTimedOut, setCompileTimedOut] = useState(false);
   const [displayProgress, setDisplayProgress] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    // Làm mượt tiến trình tải từ 0% lên tới progress thật
-    const target = active ? Math.max(progress, 15) : 100;
+    if (!waitForCompile || isSceneCompiled) return;
+    const timeout = setTimeout(() => setCompileTimedOut(true), 2000);
+    return () => clearTimeout(timeout);
+  }, [waitForCompile, isSceneCompiled]);
+
+  const compileReady = !waitForCompile || isSceneCompiled || compileTimedOut;
+
+  useEffect(() => {
+    // Làm mượt tiến trình tải từ 0% lên tới progress thật & chờ compileAsync (tối đa 2s)
+    const target = active ? Math.max(progress, 15) : compileReady ? 100 : 92;
     const interval = setInterval(() => {
       setDisplayProgress((prev) => {
         if (prev >= target) {
@@ -29,7 +44,7 @@ export const LoadingScreen: React.FC = () => {
     }, 30);
 
     return () => clearInterval(interval);
-  }, [progress, active]);
+  }, [progress, active, compileReady]);
 
   if (!isVisible) return null;
 
@@ -66,7 +81,9 @@ export const LoadingScreen: React.FC = () => {
           <div className="flex items-center justify-between text-xs font-bold text-slate-700">
             <span className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-hyper-primary animate-spin" />
-              Đang khởi tạo không gian 3D...
+              {waitForCompile && !compileReady
+                ? "Đang biên dịch shader 3D..."
+                : "Đang khởi tạo không gian 3D..."}
             </span>
             <span className="font-num tabular-nums text-hyper-accent">{Math.round(displayProgress)}%</span>
           </div>

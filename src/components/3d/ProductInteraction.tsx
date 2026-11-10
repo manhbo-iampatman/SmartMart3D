@@ -19,6 +19,7 @@ export function useProductInteraction() {
   const elapsed = useRef(0);
   const blocked = useAppStore(isSpatialInputBlocked);
   const raycaster = useMemo(() => new THREE.Raycaster(undefined, undefined, 0, PRODUCT_REACH_METERS), []);
+  const pickablesRef = useRef<THREE.Object3D[]>([]);
   const transform = useMemo(() => ({
     instance: new THREE.Matrix4(),
     bounds: new THREE.Matrix4(),
@@ -34,7 +35,25 @@ export function useProductInteraction() {
     if (!locked && !fromCenter && !pointerInside.current) return null;
     camera.updateMatrixWorld();
     raycaster.setFromCamera(locked || fromCenter ? centerPointer : pointer.current, camera);
-    return findReachableProduct(raycaster, scene.children);
+
+    const pickables = pickablesRef.current;
+    pickables.length = 0;
+    if (typeof scene.traverse === "function") {
+      scene.traverse((obj) => {
+        if ((obj.layers.mask & 2) !== 0 && obj.visible) {
+          pickables.push(obj);
+        }
+      });
+    }
+
+    if (pickables.length > 0) {
+      raycaster.layers.set(1);
+      return findReachableProduct(raycaster, pickables, false);
+    }
+
+    // Fallback Layer 0 cho unit test dùng mesh mặc định
+    raycaster.layers.set(0);
+    return findReachableProduct(raycaster, scene.children, true);
   }, [camera, gl, raycaster, scene, centerPointer]);
 
   const showTarget = useCallback((hit: ProductHit | null) => {

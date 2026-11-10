@@ -3,8 +3,18 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 
+vi.hoisted(() => ({}));
+const frameCallbacks: Array<(state: unknown, delta: number) => void> = [];
+let capturedCanvasProps: { shadows?: unknown; gl?: Record<string, unknown> } = {};
+
 vi.mock("@react-three/fiber", () => ({
-  useFrame: () => {},
+  Canvas: ({ children, shadows, gl }: { children?: React.ReactNode; shadows?: unknown; gl?: Record<string, unknown> }) => {
+    capturedCanvasProps = { shadows, gl };
+    return React.createElement("div", { "data-testid": "r3f-canvas" }, children);
+  },
+  useFrame: (cb: (state: unknown, delta: number) => void) => {
+    frameCallbacks.push(cb);
+  },
   useThree: () => ({
     camera: new THREE.PerspectiveCamera(65, 16 / 9, 0.1, 100),
     gl: { domElement: document.createElement("canvas") },
@@ -17,11 +27,17 @@ vi.mock("@react-three/drei", () => ({
     React.createElement("span", { "data-testid": "3d-text" }, children),
   RoundedBox: ({ children }: { children?: React.ReactNode }) =>
     React.createElement("div", { "data-testid": "rounded-box" }, children),
+  Line: () => React.createElement("div", { "data-testid": "3d-line" }),
+  useProgress: () => ({ progress: 100, active: false }),
 }));
 
 import { CAMERA_PRESETS } from "../data/cameraPresets";
+import { MOCK_PRODUCTS } from "../data/mockProducts";
 import { STORE_LAYOUT } from "../data/storeLayout";
 import { useAppStore } from "../stores/useAppStore";
+import { useCartStore } from "../stores/useCartStore";
+import { NavigationGuide } from "../components/3d/NavigationGuide";
+import { Scene3D } from "../components/3d/Scene3D";
 import { findPath, isWalkable } from "../utils/pathfinding";
 import {
   GROCERY_ATLAS_TILES,
@@ -44,7 +60,7 @@ function countRenderableDrawUnits(container: HTMLElement): number {
   return container.querySelectorAll('mesh, instancedmesh, [data-testid="rounded-box"]').length;
 }
 
-describe("Phase 6 - Visual Parity, Atlas UVs, 6 Camera Presets, A* Cache & Draw Call Gate", () => {
+describe("Phase 6 & 7 - Visual Parity, Atlas UVs, 7 Camera Presets, A* Cache, Zero-Jank & Draw Call Gate", () => {
   it("1. Texture Atlas 2048x2048 & Banner Atlas 1024x512 giữ nguyên UV trong [0..1] cho toàn bộ tile", () => {
     const atlas1 = getGroceryTextureAtlas();
     const atlas2 = getGroceryTextureAtlas();
@@ -84,8 +100,8 @@ describe("Phase 6 - Visual Parity, Atlas UVs, 6 Camera Presets, A* Cache & Draw 
     });
   });
 
-  it("2. 6 Camera Presets chuẩn đối chiếu (01-overview ẩn trần; 02..06 đều walkable)", () => {
-    expect(CAMERA_PRESETS.length).toBe(6);
+  it("2. 7 Camera Presets chuẩn đối chiếu (01-overview ẩn trần; 02..07 đều walkable)", () => {
+    expect(CAMERA_PRESETS.length).toBe(7);
 
     const overview = CAMERA_PRESETS[0];
     expect(overview.id).toBe("01-overview");
@@ -111,15 +127,15 @@ describe("Phase 6 - Visual Parity, Atlas UVs, 6 Camera Presets, A* Cache & Draw 
     expect(useAppStore.getState().activePresetTarget?.id).toBe("02-entrance");
   });
 
-  it("3. FloorPlanMap hỗ trợ chuyển Tab giữa Khu vực (mặc định) và 6 Góc nhìn", () => {
+  it("3. FloorPlanMap hỗ trợ chuyển Tab giữa Khu vực (mặc định) và 7 Góc nhìn", () => {
     const onClose = vi.fn();
     render(React.createElement(FloorPlanMap, { onClose }));
 
     // Tab Khu vực hiển thị mặc định để không phá vỡ bài kiểm tra Fast-Travel
     expect(screen.getByText(/Dịch chuyển nhanh \(Fast-Travel\)/i)).toBeInTheDocument();
 
-    // Chuyển sang Tab 6 Góc nhìn
-    fireEvent.click(screen.getByText("6 Góc nhìn"));
+    // Chuyển sang Tab 7 Góc nhìn
+    fireEvent.click(screen.getByRole("button", { name: /7\s*Góc nhìn/i }));
     for (const preset of CAMERA_PRESETS) {
       expect(screen.getByText(preset.label)).toBeInTheDocument();
     }
@@ -160,7 +176,7 @@ describe("Phase 6 - Visual Parity, Atlas UVs, 6 Camera Presets, A* Cache & Draw 
     const structureView = render(React.createElement(SupermarketStructure));
     const gondolaView = render(React.createElement(AisleGondola));
     const stockView = render(React.createElement(InstancedStock));
-    // StoreFixtures đã bao gồm SelfCheckoutScanner3D bên trong
+    // Tường Bắc Dairy & Frozen, Bakery & Deli và Đảo Mùa Vụ (đã xóa SelfCheckout04 & PromotionIsland)
     const fixturesView = render(React.createElement(StoreFixtures));
     const produceView = render(React.createElement(ProduceSection));
     const apparelView = render(React.createElement(ApparelSection));
@@ -172,7 +188,7 @@ describe("Phase 6 - Visual Parity, Atlas UVs, 6 Camera Presets, A* Cache & Draw 
       SupermarketStructure: countRenderableDrawUnits(structureView.container),
       AisleGondola: countRenderableDrawUnits(gondolaView.container),
       InstancedStock: countRenderableDrawUnits(stockView.container),
-      "StoreFixtures+SelfCheckout04": countRenderableDrawUnits(fixturesView.container),
+      StoreFixtures: countRenderableDrawUnits(fixturesView.container),
       ProduceSection: countRenderableDrawUnits(produceView.container),
       ApparelSection: countRenderableDrawUnits(apparelView.container),
       CheckoutBank: countRenderableDrawUnits(checkoutBankView.container),
@@ -181,8 +197,58 @@ describe("Phase 6 - Visual Parity, Atlas UVs, 6 Camera Presets, A* Cache & Draw 
     };
 
     const total = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
-    console.info(`[Phase 6 Renderable Audit] Total=${total}/75`, JSON.stringify(breakdown));
+    console.info(`[Phase 8 Renderable Audit] Total=${total}/75`, JSON.stringify(breakdown));
     expect(total).toBeGreaterThan(20);
     expect(total).toBeLessThanOrEqual(75);
+    expect(fixturesView.container.querySelectorAll("pointlight").length).toBe(0);
+  });
+
+  it("6. Cổng Zero-Jank Phase 7: ShoppingTrolley đạt 0 React re-render suốt 120 frame rơi hàng (useFrame)", () => {
+    frameCallbacks.length = 0;
+    act(() => useCartStore.getState().clearCart());
+
+    let renderCount = 0;
+    const onRender = () => {
+      renderCount += 1;
+    };
+
+    render(
+      React.createElement(
+        React.Profiler,
+        { id: "trolley-profiler", onRender },
+        React.createElement(ShoppingTrolley)
+      )
+    );
+
+    const haohao = MOCK_PRODUCTS.find((p) => p.id === "prod-noodle-haohao")!;
+    act(() => {
+      useCartStore.getState().addItem(haohao);
+    });
+
+    const rendersAfterAdd = renderCount;
+    const fakeState = { camera: new THREE.PerspectiveCamera(65, 16 / 9, 0.1, 100) };
+    for (let f = 0; f < 120; f++) {
+      for (const cb of frameCallbacks) {
+        cb(fakeState, 0.016);
+      }
+    }
+
+    expect(renderCount).toBe(rendersAfterAdd);
+  });
+
+  it("7. Gate 3 Phase 8: Scene3D dùng THREE.AgXToneMapping (0.96), PCFShadowMap không PCFSoftShadowMap & NavigationGuide 0 <pointLight>", () => {
+    capturedCanvasProps = {};
+    const sceneView = render(React.createElement(Scene3D));
+
+    expect(capturedCanvasProps.shadows).toEqual({
+      enabled: true,
+      type: THREE.PCFShadowMap,
+    });
+    expect(capturedCanvasProps.gl?.toneMapping).toBe(THREE.AgXToneMapping);
+    expect(capturedCanvasProps.gl?.toneMappingExposure).toBe(0.96);
+    expect(sceneView.container.querySelectorAll("pointlight").length).toBe(0);
+
+    const navView = render(React.createElement(NavigationGuide));
+    expect(navView.container.querySelectorAll("pointlight").length).toBe(0);
   });
 });

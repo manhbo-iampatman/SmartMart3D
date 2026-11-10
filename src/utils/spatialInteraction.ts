@@ -61,9 +61,10 @@ function isVisibleSurface(object: THREE.Object3D): boolean {
 /** Only the first visible surface can be picked; shelves block products behind them. */
 export function findReachableProduct(
   raycaster: THREE.Raycaster,
-  objects: THREE.Object3D[]
+  objects: THREE.Object3D[],
+  recursive = true
 ): ProductHit | null {
-  const surface = raycaster.intersectObjects(objects, true).find(
+  const surface = raycaster.intersectObjects(objects, recursive).find(
     (hit) => hit.distance <= PRODUCT_REACH_METERS && isVisibleSurface(hit.object)
   );
   if (!surface) return null;

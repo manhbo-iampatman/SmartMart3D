@@ -130,11 +130,22 @@ describe("PlayerFPS - trạng thái điều khiển khi mua sắm", () => {
     expect(fiber.state.camera.position.equals(position)).toBe(true);
   });
 
-  it("không đi xuyên đảo khuyến mãi khi giữ W", () => {
+  it("trục chính giữa sảnh thông thoáng khi giữ W và không đi xuyên kệ Gondola", () => {
     render(<PlayerFPS />);
     fireEvent.keyDown(window, { code: "KeyW" });
     for (let frame = 0; frame < 200; frame++) act(() => fiber.frame(fiber.state, 0.02));
-    expect(fiber.state.camera.position.z).toBeGreaterThan(1.3);
+    expect(fiber.state.camera.position.z).toBeLessThan(-10);
+    expect(isWalkable({ x: fiber.state.camera.position.x, z: fiber.state.camera.position.z })).toBe(true);
+    fireEvent.keyUp(window, { code: "KeyW" });
+
+    // Đứng trước dãy kệ A02 (-2.6, 9.0) nhìn hướng Bắc (-Z) -> giữ W phải dừng sát đầu kệ
+    act(() => {
+      fiber.state.camera.position.set(-2.6, 1.65, 9.0);
+      fiber.state.camera.lookAt(-2.6, 1.65, 0);
+    });
+    fireEvent.keyDown(window, { code: "KeyW" });
+    for (let frame = 0; frame < 150; frame++) act(() => fiber.frame(fiber.state, 0.02));
+    expect(fiber.state.camera.position.z).toBeGreaterThan(6.8);
     expect(isWalkable({ x: fiber.state.camera.position.x, z: fiber.state.camera.position.z })).toBe(true);
   });
 

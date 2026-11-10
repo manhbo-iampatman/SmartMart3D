@@ -184,14 +184,16 @@ const ApparelProductInstancedBatch: React.FC<{ batch: ApparelProductBatch }> = (
   const ref = useRef<THREE.InstancedMesh>(null);
 
   useLayoutEffect(() => {
-    applyMatricesToInstancedMesh(ref.current, batch.matrices);
+    applyMatricesToInstancedMesh(ref.current, batch.matrices, 0, undefined, {
+      staticTransform: true,
+      enableLayer1: true,
+    });
   }, [batch.matrices]);
 
   return (
     <instancedMesh
       ref={ref}
       args={[batch.geometry, batch.material, batch.matrices.length]}
-      castShadow
       receiveShadow
       userData={{ product: batch.product }}
       onClick={(e) => e.stopPropagation()}
@@ -303,7 +305,10 @@ const ApparelFurnitureInstanced: React.FC<{
   }, [racks, tables, soleMatrices, visorMatrices]);
 
   useLayoutEffect(() => {
-    applyMatricesToInstancedMesh(solidRef.current, data.matrices, 0, data.colors);
+    applyMatricesToInstancedMesh(solidRef.current, data.matrices, 0, data.colors, {
+      staticTransform: true,
+      enableLayer1: true,
+    });
   }, [data]);
 
   return (

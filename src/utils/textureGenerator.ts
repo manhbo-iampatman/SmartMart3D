@@ -3,6 +3,17 @@ import * as THREE from "three";
 // Cache các texture đã khởi tạo để tránh sinh lại nhiều lần
 const textureCache = new Map<string, THREE.Texture>();
 
+function finalizeCanvasTexture(
+  cacheKey: string,
+  canvas: HTMLCanvasElement,
+  colorSpace: THREE.ColorSpace = THREE.SRGBColorSpace
+): THREE.CanvasTexture {
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = colorSpace;
+  textureCache.set(cacheKey, texture);
+  return texture;
+}
+
 /**
  * Tạo canvas an toàn hỗ trợ cả môi trường Node/JSDOM (test) và trình duyệt thực tế
  */
@@ -78,10 +89,9 @@ export function getVinamilkTexture(): THREE.Texture {
   ctx.fillStyle = "#1e293b";
   ctx.fillRect(180, 430, 152, 40);
 
-  const texture = new THREE.CanvasTexture(canvas);
+  const texture = finalizeCanvasTexture("vinamilk", canvas, THREE.SRGBColorSpace);
   texture.wrapS = THREE.ClampToEdgeWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
-  textureCache.set("vinamilk", texture);
   return texture;
 }
 
@@ -136,9 +146,7 @@ export function getHaoHaoTexture(): THREE.Texture {
   ctx.font = "bold 22px Arial, sans-serif";
   ctx.fillText("Khối lượng tịnh: 75g", 256, 465);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  textureCache.set("haohao", texture);
-  return texture;
+  return finalizeCanvasTexture("haohao", canvas, THREE.SRGBColorSpace);
 }
 
 /**
@@ -180,9 +188,7 @@ export function getCocaColaTexture(): THREE.Texture {
   ctx.font = "18px Arial, sans-serif";
   ctx.fillText("320 ml • SẢNG KHOÁI MÁT LẠNH", 256, 450);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  textureCache.set("coca", texture);
-  return texture;
+  return finalizeCanvasTexture("coca", canvas, THREE.SRGBColorSpace);
 }
 
 /**
@@ -229,9 +235,7 @@ export function getG7Texture(): THREE.Texture {
   ctx.font = "18px Arial, sans-serif";
   ctx.fillText("HỘP 18 GÓI x 16g", 256, 450);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  textureCache.set("g7", texture);
-  return texture;
+  return finalizeCanvasTexture("g7", canvas, THREE.SRGBColorSpace);
 }
 
 /**
@@ -277,9 +281,7 @@ export function getChocoPieTexture(): THREE.Texture {
   ctx.font = "18px Arial, sans-serif";
   ctx.fillText("Hộp 12 Cái • 360g", 256, 450);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  textureCache.set("chocopie", texture);
-  return texture;
+  return finalizeCanvasTexture("chocopie", canvas, THREE.SRGBColorSpace);
 }
 
 /**
@@ -321,9 +323,7 @@ export function getMiloTexture(): THREE.Texture {
   ctx.font = "18px Arial, sans-serif";
   ctx.fillText("Lốc 4 Hộp x 180ml • Tiếp Năng Lượng", 256, 440);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  textureCache.set("milo", texture);
-  return texture;
+  return finalizeCanvasTexture("milo", canvas, THREE.SRGBColorSpace);
 }
 
 /**
@@ -368,9 +368,7 @@ export function getStingTexture(): THREE.Texture {
   ctx.font = "18px Arial, sans-serif";
   ctx.fillText("HỒNG SÂM & NĂNG LƯỢNG • 330ml", 256, 440);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  textureCache.set("sting", texture);
-  return texture;
+  return finalizeCanvasTexture("sting", canvas, THREE.SRGBColorSpace);
 }
 
 /**
@@ -415,9 +413,7 @@ export function getSimplyTexture(): THREE.Texture {
   ctx.font = "bold 24px Arial, sans-serif";
   ctx.fillText("CHAI 1 LÍT", 256, 380);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  textureCache.set("simply", texture);
-  return texture;
+  return finalizeCanvasTexture("simply", canvas, THREE.SRGBColorSpace);
 }
 
 /**
@@ -492,11 +488,10 @@ export function getBirchWoodTexture(): THREE.Texture {
     }
   }
 
-  const texture = new THREE.CanvasTexture(canvas);
+  const texture = finalizeCanvasTexture("birch-wood", canvas, THREE.SRGBColorSpace);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(5, 6);
-  textureCache.set("birch-wood", texture);
   return texture;
 }
 
@@ -531,11 +526,10 @@ export function getWireMeshTexture(): THREE.Texture {
     ctx.stroke();
   }
 
-  const texture = new THREE.CanvasTexture(canvas);
+  const texture = finalizeCanvasTexture("wire-mesh", canvas, THREE.SRGBColorSpace);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(3, 2);
-  textureCache.set("wire-mesh", texture);
   return texture;
 }
 
@@ -569,9 +563,7 @@ export function getSelfCheckoutSignTexture(): THREE.Texture {
   ctx.font = "bold 20px 'Be Vietnam Pro', Arial, sans-serif";
   ctx.fillText("SMARTMART 3D · QUẦY TỰ THANH TOÁN", 256, 140);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  textureCache.set("self-checkout-sign", texture);
-  return texture;
+  return finalizeCanvasTexture("self-checkout-sign", canvas, THREE.SRGBColorSpace);
 }
 
 /**
@@ -630,9 +622,7 @@ export function getFreshPicksMuralTexture(): THREE.Texture {
   ctx.textAlign = "left";
   ctx.fillText("SmartMart 3D · Khám phá quầy nông sản tươi", 28, 240);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  textureCache.set("mural-fresh-picks", texture);
-  return texture;
+  return finalizeCanvasTexture("mural-fresh-picks", canvas, THREE.SRGBColorSpace);
 }
 
 /**
@@ -683,8 +673,218 @@ export function getFillYourPantryMuralTexture(): THREE.Texture {
   ctx.textAlign = "left";
   ctx.fillText("SmartMart 3D · Hàng tiêu dùng mỗi ngày", 28, 240);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  textureCache.set("mural-fill-pantry", texture);
-  return texture;
+  return finalizeCanvasTexture("mural-fill-pantry", canvas, THREE.SRGBColorSpace);
+}
+
+export interface TerrazzoFloorTextures {
+  colorMap: THREE.Texture;
+  roughnessMap: THREE.Texture;
+  bumpMap: THREE.Texture;
+}
+
+/**
+ * Bộ 3 PBR textures cho sàn bê tông mài / Terrazzo 40m x 54m (Phase 8):
+ * - colorMap (SRGBColorSpace): ô gạch 1m x 1m xám sáng kiến trúc #d8e0ea + hạt đá terrazzo + ron #b0bec5
+ * - roughnessMap (NoColorSpace): lòng gạch bóng nhẹ 0.24..0.34, mạch ron nhám 0.82
+ * - bumpMap (NoColorSpace): rãnh mạch ron tạo bắt sáng góc nghiêng
+ * Kích thước 512x512 lặp 20x27 để giữ nhẹ VRAM & băng thông di động (anisotropy <= 4).
+ */
+export function getTerrazzoFloorTextures(maxAnisotropy = 4): TerrazzoFloorTextures {
+  const safeAniso = Math.min(4, Math.max(1, maxAnisotropy));
+  if (
+    textureCache.has("floor-terrazzo-color") &&
+    textureCache.has("floor-terrazzo-rough") &&
+    textureCache.has("floor-terrazzo-bump")
+  ) {
+    return {
+      colorMap: textureCache.get("floor-terrazzo-color")!,
+      roughnessMap: textureCache.get("floor-terrazzo-rough")!,
+      bumpMap: textureCache.get("floor-terrazzo-bump")!,
+    };
+  }
+
+  const size = 512;
+  const tilesPerAxis = 2;
+  const tilePx = size / tilesPerAxis;
+  const cSetup = createSafeCanvas(size, size);
+  const rSetup = createSafeCanvas(size, size);
+  const bSetup = createSafeCanvas(size, size);
+
+  if (!cSetup.ctx || !cSetup.canvas || !rSetup.ctx || !rSetup.canvas || !bSetup.ctx || !bSetup.canvas) {
+    const cFallback = new THREE.Texture();
+    cFallback.colorSpace = THREE.SRGBColorSpace;
+    const rFallback = new THREE.Texture();
+    rFallback.colorSpace = THREE.NoColorSpace;
+    const bFallback = new THREE.Texture();
+    bFallback.colorSpace = THREE.NoColorSpace;
+    textureCache.set("floor-terrazzo-color", cFallback);
+    textureCache.set("floor-terrazzo-rough", rFallback);
+    textureCache.set("floor-terrazzo-bump", bFallback);
+    return { colorMap: cFallback, roughnessMap: rFallback, bumpMap: bFallback };
+  }
+
+  const { canvas: cCanv, ctx: cCtx } = cSetup;
+  const { canvas: rCanv, ctx: rCtx } = rSetup;
+  const { canvas: bCanv, ctx: bCtx } = bSetup;
+
+  // Nền từng ô gạch biến thiên độ sáng & độ nhám tự nhiên ±3%
+  const colorTones = ["#dde4ec", "#d8e0ea", "#d5dde7", "#e0e6ee"];
+  const roughTones = ["#454545", "#4c4c4c", "#424242", "#525252"]; // ~0.26 - 0.32
+  for (let ty = 0; ty < tilesPerAxis; ty++) {
+    for (let tx = 0; tx < tilesPerAxis; tx++) {
+      const idx = (tx + ty * 2) % 4;
+      cCtx.fillStyle = colorTones[idx];
+      cCtx.fillRect(tx * tilePx, ty * tilePx, tilePx, tilePx);
+      rCtx.fillStyle = roughTones[idx];
+      rCtx.fillRect(tx * tilePx, ty * tilePx, tilePx, tilePx);
+    }
+  }
+  bCtx.fillStyle = "#dcdcdc";
+  bCtx.fillRect(0, 0, size, size);
+
+  // Hạt cốt liệu terrazzo xác định (deterministic hash) không nhiễu Moire
+  const chipPalette = ["#cbd5e1", "#e9eff6", "#b8c4d2", "#f1f5f9"];
+  for (let i = 0; i < 420; i++) {
+    const px = ((i * 73856093) >>> 0) % (size - 4);
+    const py = ((i * 19349663) >>> 0) % (size - 4);
+    const chipSize = (i % 3) + 1;
+    cCtx.fillStyle = chipPalette[i % chipPalette.length];
+    cCtx.fillRect(px, py, chipSize, chipSize);
+    rCtx.fillStyle = i % 2 === 0 ? "#3f3f3f" : "#5a5a5a";
+    rCtx.fillRect(px, py, chipSize, chipSize);
+    bCtx.fillStyle = i % 2 === 0 ? "#e6e6e6" : "#d0d0d0";
+    bCtx.fillRect(px, py, chipSize, chipSize);
+  }
+
+  // Mạch ron mảnh 2px giữa các tấm gạch 1m x 1m (nhám cao 0.82 & lún nhẹ)
+  cCtx.strokeStyle = "#b0bec5";
+  cCtx.lineWidth = 2;
+  rCtx.strokeStyle = "#d0d0d0";
+  rCtx.lineWidth = 3;
+  bCtx.strokeStyle = "#707070";
+  bCtx.lineWidth = 3;
+  for (let t = 0; t < tilesPerAxis; t++) {
+    const pos = t * tilePx;
+    cCtx.strokeRect(pos, 0, tilePx, size);
+    cCtx.strokeRect(0, pos, size, tilePx);
+    rCtx.strokeRect(pos, 0, tilePx, size);
+    rCtx.strokeRect(0, pos, size, tilePx);
+    bCtx.strokeRect(pos, 0, tilePx, size);
+    bCtx.strokeRect(0, pos, size, tilePx);
+  }
+
+  const configureFloorTex = (tex: THREE.CanvasTexture) => {
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(20, 27);
+    tex.anisotropy = safeAniso;
+    return tex;
+  };
+
+  return {
+    colorMap: configureFloorTex(finalizeCanvasTexture("floor-terrazzo-color", cCanv, THREE.SRGBColorSpace)),
+    roughnessMap: configureFloorTex(finalizeCanvasTexture("floor-terrazzo-rough", rCanv, THREE.NoColorSpace)),
+    bumpMap: configureFloorTex(finalizeCanvasTexture("floor-terrazzo-bump", bCanv, THREE.NoColorSpace)),
+  };
+}
+
+/**
+ * Texture tôn đục lỗ Pegboard sáng dịu cho tấm lưng dãy kệ Gondola (Phase 8)
+ */
+export function getPegboardTexture(): THREE.Texture {
+  if (textureCache.has("gondola-pegboard")) return textureCache.get("gondola-pegboard")!;
+
+  const { canvas, ctx } = createSafeCanvas(256, 256);
+  if (!ctx || !canvas) {
+    const fallback = new THREE.Texture();
+    fallback.colorSpace = THREE.SRGBColorSpace;
+    textureCache.set("gondola-pegboard", fallback);
+    return fallback;
+  }
+
+  ctx.fillStyle = "#eef2f6";
+  ctx.fillRect(0, 0, 256, 256);
+
+  ctx.fillStyle = "#cbd5e1";
+  const step = 16;
+  for (let y = 8; y < 256; y += step) {
+    for (let x = 8; x < 256; x += step) {
+      ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
+    }
+  }
+
+  const tex = finalizeCanvasTexture("gondola-pegboard", canvas, THREE.SRGBColorSpace);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 2);
+  return tex;
+}
+
+/**
+ * Texture Contact AO chữ nhật bo mềm chuẩn hyper-ink (#0F172A, alpha tối đa <= 0.22)
+ * trải dưới chân kệ, quầy, bàn và cột kiến trúc (Phase 8).
+ */
+export function getContactAOTexture(): THREE.Texture {
+  if (textureCache.has("contact-ao-box")) return textureCache.get("contact-ao-box")!;
+
+  const size = 128;
+  const { canvas, ctx } = createSafeCanvas(size, size);
+  if (!ctx || !canvas) {
+    const fallback = new THREE.Texture();
+    fallback.colorSpace = THREE.SRGBColorSpace;
+    textureCache.set("contact-ao-box", fallback);
+    return fallback;
+  }
+
+  // Nhiều lớp hình chữ nhật đồng tâm để chuyển biên mịn không bết đen (tổng alpha tích lũy <= 0.22)
+  const layers = 14;
+  for (let i = 0; i < layers; i++) {
+    const inset = (i / layers) * 28;
+    ctx.fillStyle = "rgba(15, 23, 42, 0.016)";
+    ctx.fillRect(inset, inset, size - inset * 2, size - inset * 2);
+  }
+
+  const tex = finalizeCanvasTexture("contact-ao-box", canvas, THREE.SRGBColorSpace);
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+
+/**
+ * Texture Blob Contact Shadow mềm cho xe đẩy di động ShoppingTrolley (Phase 8)
+ */
+export function getTrolleyBlobShadowTexture(): THREE.Texture {
+  if (textureCache.has("trolley-blob-shadow")) return textureCache.get("trolley-blob-shadow")!;
+
+  const size = 128;
+  const { canvas, ctx } = createSafeCanvas(size, size);
+  if (!ctx || !canvas) {
+    const fallback = new THREE.Texture();
+    fallback.colorSpace = THREE.SRGBColorSpace;
+    textureCache.set("trolley-blob-shadow", fallback);
+    return fallback;
+  }
+
+  const half = size / 2;
+  if (typeof ctx.createRadialGradient === "function") {
+    const grad = ctx.createRadialGradient(half, half, 8, half, half, half - 4);
+    grad.addColorStop(0, "rgba(15, 23, 42, 0.28)");
+    grad.addColorStop(0.55, "rgba(15, 23, 42, 0.14)");
+    grad.addColorStop(1, "rgba(15, 23, 42, 0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+  } else {
+    for (let r = half - 6; r >= 12; r -= 8) {
+      ctx.fillStyle = "rgba(15, 23, 42, 0.045)";
+      ctx.beginPath();
+      ctx.arc(half, half, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  const tex = finalizeCanvasTexture("trolley-blob-shadow", canvas, THREE.SRGBColorSpace);
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
 }
 

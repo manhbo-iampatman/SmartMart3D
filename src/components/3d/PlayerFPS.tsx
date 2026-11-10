@@ -38,6 +38,9 @@ export const PlayerFPS: React.FC = () => {
   const keys = useRef<Record<string, boolean>>({});
   const displacement = useRef(new THREE.Vector3());
   const dragging = useRef(false);
+  const ignoreNextMove = useRef(false);
+  const lastLodCamPos = useRef(new THREE.Vector3());
+  const lodInitialized = useRef(false);
   const poseElapsed = useRef(0);
   const fastTravel = useRef<FastTravelTransition | null>(null);
   const look = useRef({ matrix: new THREE.Matrix4(), quaternion: new THREE.Quaternion(), point: new THREE.Vector3(), direction: new THREE.Vector3() });
@@ -142,8 +145,12 @@ export const PlayerFPS: React.FC = () => {
     };
     const handleKeyUp = (event: KeyboardEvent) => { keys.current[event.code] = false; };
     const handleLockChange = () => {
+      const nowLocked = ownerDocument.pointerLockElement === canvas;
+      if (nowLocked) {
+        ignoreNextMove.current = true;
+      }
       resetInput();
-      useAppStore.getState().setIsPointerLocked(ownerDocument.pointerLockElement === canvas);
+      useAppStore.getState().setIsPointerLocked(nowLocked);
     };
     const handleLockError = () => {
       useAppStore.getState().setIsPointerLocked(false);
@@ -167,8 +174,15 @@ export const PlayerFPS: React.FC = () => {
       if (isBlocked()) return;
       const locked = ownerDocument.pointerLockElement === canvas;
       if (!locked && !dragging.current) return;
-      const dx = locked ? event.movementX : event.clientX - previousMouse.x;
-      const dy = locked ? event.movementY : event.clientY - previousMouse.y;
+      if (locked && ignoreNextMove.current) {
+        ignoreNextMove.current = false;
+        previousMouse.set(event.clientX, event.clientY);
+        return;
+      }
+      const rawDx = locked ? event.movementX : event.clientX - previousMouse.x;
+      const rawDy = locked ? event.movementY : event.clientY - previousMouse.y;
+      const dx = locked ? THREE.MathUtils.clamp(rawDx, -80, 80) : rawDx;
+      const dy = locked ? THREE.MathUtils.clamp(rawDy, -80, 80) : rawDy;
       previousMouse.set(event.clientX, event.clientY);
       rotation.setFromQuaternion(camera.quaternion);
       rotation.y -= dx * 0.002;
@@ -257,12 +271,16 @@ export const PlayerFPS: React.FC = () => {
   }, [blocked, gl]);
 
   useFrame((_, delta) => {
-    notifyCameraLodUpdate(camera.position);
+    if (!lodInitialized.current || camera.position.distanceToSquared(lastLodCamPos.current) > 0.04) {
+      lastLodCamPos.current.copy(camera.position);
+      lodInitialized.current = true;
+      notifyCameraLodUpdate(camera.position);
+    }
     if (isSpatialInputBlocked(useAppStore.getState()) || isEditingText(gl.domElement.ownerDocument.activeElement)) return;
 
     // 1. Quản lý hoạt cảnh bay mượt Fast-Travel
     if (fastTravel.current) {
-      fastTravel.current.elapsed += delta;
+      fastTravel.current.elapsed += Math.min(delta, 0.05);
       const progress = Math.min(1, fastTravel.current.elapsed / fastTravel.current.duration);
       // Easing Hermite mượt mà
       const ease = progress * progress * (3 - 2 * progress);

@@ -114,6 +114,7 @@ export function getGroceryTextureAtlas(): THREE.Texture {
   });
 
   const atlasTexture = new THREE.CanvasTexture(canvas);
+  atlasTexture.colorSpace = THREE.SRGBColorSpace;
   atlasTexture.needsUpdate = true;
   atlasCache.set("grocery-2048", atlasTexture);
   return atlasTexture;
@@ -174,7 +175,61 @@ export function getDepartmentBannerAtlasTexture(
   });
 
   const atlasTexture = new THREE.CanvasTexture(canvas);
+  atlasTexture.colorSpace = THREE.SRGBColorSpace;
   atlasTexture.needsUpdate = true;
   atlasCache.set("banners-1024", atlasTexture);
+  return atlasTexture;
+}
+
+export interface ZoneSignTileSpec {
+  title: string;
+  subtitle: string;
+  bgColor: string;
+  accentColor: string;
+}
+
+/**
+ * Đóng gói 4 biển phân khu (Dairy & Frozen, Bakery & Deli, Self-Checkout Sảnh Nam, SmartMart Bắc)
+ * vào 1 Texture Atlas 1024x512 (2x2) để không tạo thêm <Text> Troika SDF mới.
+ */
+export function getZoneSignAtlasTexture(signs: readonly ZoneSignTileSpec[]): THREE.Texture {
+  if (atlasCache.has("zone-signs-1024")) return atlasCache.get("zone-signs-1024")!;
+
+  const { canvas, ctx } = createSafeAtlasCanvas(1024, 512);
+  if (!ctx || !canvas) {
+    const fallback = new THREE.Texture();
+    atlasCache.set("zone-signs-1024", fallback);
+    return fallback;
+  }
+
+  const tileW = 512;
+  const tileH = 256;
+  signs.slice(0, 4).forEach((s, idx) => {
+    const col = idx % 2;
+    const row = Math.floor(idx / 2);
+    const ox = col * tileW;
+    const oy = row * tileH;
+
+    ctx.fillStyle = s.bgColor;
+    ctx.fillRect(ox, oy, tileW, tileH);
+
+    ctx.fillStyle = s.accentColor;
+    ctx.fillRect(ox, oy + tileH - 16, tileW, 16);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 34px 'Be Vietnam Pro', Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(s.title, ox + tileW / 2, oy + 104);
+
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font = "600 20px 'Be Vietnam Pro', Arial, sans-serif";
+    ctx.fillText(s.subtitle, ox + tileW / 2, oy + 162);
+  });
+
+  const atlasTexture = new THREE.CanvasTexture(canvas);
+  atlasTexture.colorSpace = THREE.SRGBColorSpace;
+  atlasTexture.needsUpdate = true;
+  atlasCache.set("zone-signs-1024", atlasTexture);
   return atlasTexture;
 }

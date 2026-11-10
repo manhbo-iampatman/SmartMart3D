@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Center, OrbitControls } from "@react-three/drei";
+import * as THREE from "three";
 import type { Product } from "../../types";
 import { getProductTextureById } from "../../utils/textureGenerator";
 
@@ -36,10 +37,19 @@ export const ProductPreview3D: React.FC<PreviewProps> = ({ product, autoRotate, 
   const isCap = product.id === "prod-apparel-cap";
 
   return (
-    <Canvas dpr={[1, 1.8]} camera={{ position: [0, size * 0.25, size * 3.2], fov: 40 }}>
-      <ambientLight intensity={1.6} />
-      <directionalLight position={[2, 3, 4]} intensity={3} />
-      <directionalLight position={[-2, 1, -2]} intensity={1.4} />
+    <Canvas
+      dpr={[1, 1.8]}
+      camera={{ position: [0, size * 0.25, size * 3.2], fov: 40 }}
+      gl={{
+        antialias: true,
+        toneMapping: THREE.AgXToneMapping,
+        toneMappingExposure: 0.96,
+      }}
+    >
+      <hemisphereLight args={["#ffffff", "#cbd5e1", 0.5]} />
+      <ambientLight intensity={0.45} />
+      <directionalLight position={[2.5, 4, 3.5]} intensity={1.6} color="#fffcf7" />
+      <directionalLight position={[-2.5, 1.5, -2]} intensity={0.65} color="#eef6ff" />
       <Center>
         <mesh>
           {isCylinder ? (

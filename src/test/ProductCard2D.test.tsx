@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { ProductCard2D } from "../components/2d/ProductCard2D";
+import { ProductQuickViewModal } from "../components/2d/ProductQuickViewModal";
 import { useCartStore } from "../stores/useCartStore";
 import { useAppStore } from "../stores/useAppStore";
 import { Product } from "../types";
@@ -113,6 +115,61 @@ describe("ProductCard2D - Thẻ hiển thị sản phẩm chế độ 2D", () =>
     fireEvent.click(inspectButton);
 
     expect(useAppStore.getState().inspectingProduct?.id).toBe("prod-noodle-haohao");
+  });
+
+  it("Phase 9 Gate 2: sản phẩm 2D (has3D: false) mở ProductQuickViewModal với role='dialog', hỗ trợ Escape & thêm giỏ", () => {
+    const Harness = () => {
+      const [quickProduct, setQuickProduct] = useState<Product | null>(null);
+      return (
+        <>
+          <ProductCard2D product={mockProduct2DOnly} onQuickView={setQuickProduct} />
+          <ProductQuickViewModal product={quickProduct} onClose={() => setQuickProduct(null)} />
+        </>
+      );
+    };
+
+    render(<Harness />);
+
+    const quickViewBtn = screen.getByTitle("Xem chi tiết sản phẩm");
+    fireEvent.click(quickViewBtn);
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(screen.getByText(/Gạo ngon nhất thế giới/i)).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    fireEvent.click(quickViewBtn);
+    fireEvent.click(screen.getByRole("button", { name: "Tăng số lượng" }));
+    fireEvent.click(screen.getByRole("button", { name: /thêm vào giỏ hàng/i }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(useCartStore.getState().items[0].quantity).toBe(2);
+  });
+
+  it("Phase 9 Gate 2: kích hoạt fallback ảnh mượt mà khi fireEvent.error xảy ra", () => {
+    render(<ProductCard2D product={mockProduct3D} />);
+
+    const img = screen.getByAltText("Mì Tôm Chua Cay Hảo Hảo 75g");
+    fireEvent.error(img);
+
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Mì Tôm Chua Cay Hảo Hảo 75g")).toHaveLength(2);
+  });
+
+  it("Phase 9 Gate 2: hiển thị inline stepper [- qty +] sau khi chọn mua để chỉnh số lượng trực tiếp trên thẻ", () => {
+    render(<ProductCard2D product={mockProduct3D} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /chọn mua/i }));
+    expect(screen.getByText(/1 sp/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: `Tăng số lượng ${mockProduct3D.name}` }));
+    expect(useCartStore.getState().items[0].quantity).toBe(2);
+    expect(screen.getByText(/2 sp/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: `Giảm số lượng ${mockProduct3D.name}` }));
+    expect(useCartStore.getState().items[0].quantity).toBe(1);
   });
 });
 

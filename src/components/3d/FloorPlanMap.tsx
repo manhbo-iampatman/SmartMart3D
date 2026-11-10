@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Camera, Compass, Maximize2, Minimize2, Sparkles, X } from "lucide-react";
 import { ALL_PRODUCTS } from "../../data/catalog";
 import { APPAREL_ZONE_BOUNDS } from "../../data/apparelLayout";
@@ -20,19 +20,61 @@ export interface FastTravelLandmark {
 
 export const FAST_TRAVEL_LANDMARKS: readonly FastTravelLandmark[] = [
   { id: "lobby", name: "Sảnh Chính", x: 0, z: 22, heading: 0, icon: "🏛️", badgeColor: "bg-indigo-600" },
-  { id: "produce", name: "Rau Củ Tươi", x: 10.5, z: -8.0, heading: -Math.PI / 2, icon: "🥦", badgeColor: "bg-emerald-600" },
+  { id: "produce", name: "Rau Củ Tươi", x: 11.5, z: -8.0, heading: -Math.PI / 2, icon: "🥦", badgeColor: "bg-emerald-600" },
   { id: "apparel", name: "Thời Trang", x: 11.0, z: 7.5, heading: -Math.PI / 2, icon: "👕", badgeColor: "bg-amber-600" },
-  { id: "entrance", name: "Lối Vào Kệ", x: 0, z: 4.5, heading: 0, icon: "🚪", badgeColor: "bg-slate-700" },
+  { id: "entrance", name: "Lối Vào Kệ", x: 0, z: 8.2, heading: 0, icon: "🚪", badgeColor: "bg-slate-700" },
   { id: "aisle1", name: "Lối 01: Đồ Uống", x: -4.0, z: 0, heading: -Math.PI / 2, icon: "🥤", badgeColor: "bg-blue-600" },
-  { id: "aisle2", name: "Lối 02: Sữa & Cà Phê", x: -1.3, z: 0, heading: -Math.PI / 2, icon: "🥛", badgeColor: "bg-orange-600" },
-  { id: "aisle3", name: "Lối 03: Bánh Kẹo", x: 1.3, z: 0, heading: Math.PI / 2, icon: "🍪", badgeColor: "bg-purple-600" },
+  { id: "aisle2", name: "Lối 02: Sữa & Cà Phê", x: 0, z: -4.4, heading: -Math.PI / 2, icon: "🥛", badgeColor: "bg-orange-600" },
+  { id: "aisle3", name: "Lối 03: Bánh Kẹo", x: 0, z: 4.4, heading: Math.PI / 2, icon: "🍪", badgeColor: "bg-purple-600" },
   { id: "aisle4", name: "Lối 04: Gia Vị", x: 4.0, z: 0, heading: Math.PI / 2, icon: "🌾", badgeColor: "bg-emerald-600" },
-  { id: "promo", name: "Ụ Khuyến Mãi", x: 0, z: 1.6, heading: Math.PI, icon: "🏷️", badgeColor: "bg-red-600" },
-  { id: "freezer", name: "Tủ Đông Lạnh", x: 0, z: -4.8, heading: Math.PI, icon: "❄️", badgeColor: "bg-cyan-600" },
-  { id: "checkout", name: "Thu Ngân 04", x: 0, z: -3.4, heading: Math.PI, icon: "💳", badgeColor: "bg-emerald-600" },
+  { id: "freezer", name: "Tủ Đông Lạnh", x: -10.3, z: -23.8, heading: 0, icon: "❄️", badgeColor: "bg-cyan-600" },
+  { id: "bakery", name: "Bánh Mì & Deli", x: 10.4, z: -23.8, heading: 0, icon: "🥐", badgeColor: "bg-amber-600" },
   { id: "kiosk-south", name: "Kiosk Sảnh Nam", x: -6.5, z: 14.8, heading: Math.PI, icon: "🏧", badgeColor: "bg-hyper-primary" },
   { id: "cart-corral", name: "Chuồng Xe Đẩy", x: -15.5, z: 19.2, heading: Math.PI, icon: "🛒", badgeColor: "bg-hyper-accent" },
 ];
+
+const MAP_PRODUCTS = ALL_PRODUCTS.filter((product) => product.has3D && product.shelfLocation);
+
+const ProductMapMarkers = React.memo<{
+  selectedId: string | null;
+  onSelect: (product: Product) => void;
+}>(({ selectedId, onSelect }) => (
+  <>
+    {MAP_PRODUCTS.map((product) => {
+      const [x, , z] = product.shelfLocation!.worldPos;
+      const active = selectedId === product.id;
+      return (
+        <g
+          key={product.id}
+          role="button"
+          tabIndex={0}
+          aria-label={`Dẫn đường đến ${product.name}`}
+          className="cursor-pointer outline-none focus:opacity-60"
+          onClick={() => onSelect(product)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onSelect(product);
+            }
+          }}
+        >
+          <title>{product.name}</title>
+          <circle cx={x} cy={z} r={0.43} fill="transparent" />
+          <circle
+            cx={x}
+            cy={z}
+            r={active ? 0.25 : 0.17}
+            fill={active ? "#ff5400" : "#ffffff"}
+            stroke={active ? "#0f172a" : "#475569"}
+            strokeWidth={0.06}
+            aria-label={active ? "Vị trí sản phẩm đang dẫn đường" : undefined}
+          />
+        </g>
+      );
+    })}
+  </>
+));
+ProductMapMarkers.displayName = "ProductMapMarkers";
 
 export const FloorPlanMap: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [expanded, setExpanded] = useState(false);
@@ -50,13 +92,16 @@ export const FloorPlanMap: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
   const { minX, maxX, minZ, maxZ, obstacles } = STORE_LAYOUT;
 
-  const chooseProduct = (product: Product) => {
-    navigate(product);
-    if (window.innerWidth < 640) {
-      setExpanded(false);
-      onClose();
-    }
-  };
+  const chooseProduct = useCallback(
+    (product: Product) => {
+      navigate(product);
+      if (window.innerWidth < 640) {
+        setExpanded(false);
+        onClose();
+      }
+    },
+    [navigate, onClose]
+  );
 
   const handleLandmarkTeleport = (landmark: FastTravelLandmark) => {
     setActiveLandmark(landmark.name);
@@ -90,7 +135,7 @@ export const FloorPlanMap: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   return (
     <section
       aria-label="Bản đồ mặt bằng siêu thị"
-      className={`absolute z-30 pointer-events-auto rounded-2xl border border-hyper-border bg-hyper-card/95 p-3 sm:p-4 text-hyper-ink shadow-2xl backdrop-blur-xl ${
+      className={`absolute z-30 pointer-events-auto rounded-2xl border border-hyper-border bg-hyper-card/95 p-3 sm:p-4 text-hyper-ink shadow-2xl ${
         expanded
           ? "inset-x-4 top-20 bottom-16 sm:inset-x-16 flex flex-col"
           : "top-28 sm:top-36 right-4 w-[min(390px,calc(100%-2rem))]"
@@ -156,7 +201,7 @@ export const FloorPlanMap: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           }`}
         >
           <Camera className="w-3.5 h-3.5" />
-          <span>6 Góc nhìn</span>
+          <span>{CAMERA_PRESETS.length} Góc nhìn</span>
         </button>
       </div>
 
@@ -186,7 +231,7 @@ export const FloorPlanMap: React.FC<{ onClose: () => void }> = ({ onClose }) => 
         <div className="mb-2.5">
           <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
             <Camera className="w-3 h-3 text-hyper-accent" />
-            <span>6 Góc nhìn kiến trúc tham chiếu</span>
+            <span>{CAMERA_PRESETS.length} Góc nhìn kiến trúc tham chiếu</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
             {CAMERA_PRESETS.map((preset) => {
@@ -244,22 +289,18 @@ export const FloorPlanMap: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           rx={0.2}
         />
 
-        {/* Chướng ngại vật / Dãy kệ & Quầy */}
-        {obstacles.map((obstacle, index) =>
+        {/* Chướng ngại vật / 18 Dãy kệ 3 tầng & Phân khu Bắc/Đông/Nam */}
+        {obstacles.map((obstacle) =>
           obstacle.kind === "circle" ? (
-            <g
+            <circle
               key={obstacle.id}
-              role="button"
-              tabIndex={0}
-              className="cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => {
-                const lm = FAST_TRAVEL_LANDMARKS.find((l) => l.id === "promo");
-                if (lm) handleLandmarkTeleport(lm);
-              }}
-            >
-              <circle cx={obstacle.x} cy={obstacle.z} r={obstacle.radius} fill="#a16207" stroke="#facc15" strokeWidth={0.06} />
-              <text x={obstacle.x} y={obstacle.z + 0.1} textAnchor="middle" fill="#fef08a" fontSize="0.28" fontWeight="bold">Ụ SALE</text>
-            </g>
+              cx={obstacle.x}
+              cy={obstacle.z}
+              r={obstacle.radius}
+              fill="#cbd5e1"
+              stroke="#64748b"
+              strokeWidth={0.05}
+            />
           ) : (
             <g key={obstacle.id}>
               <rect
@@ -269,33 +310,33 @@ export const FloorPlanMap: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                 height={obstacle.depth}
                 rx={0.1}
                 fill={
-                  index === 0 ? "#1d4ed8" :
-                  index === 1 ? "#ea580c" :
-                  index === 2 ? "#7c3aed" :
-                  index === 3 ? "#059669" : "#334155"
+                  obstacle.id.startsWith("shelf-")
+                    ? "#0052cc"
+                    : obstacle.id.startsWith("freezer-")
+                    ? "#0284c7"
+                    : obstacle.id.startsWith("bakery-")
+                    ? "#d97706"
+                    : obstacle.id.startsWith("promo-bay-")
+                    ? "#ca8a04"
+                    : obstacle.id.startsWith("produce-")
+                    ? "#10b981"
+                    : obstacle.id.startsWith("rack-") || obstacle.id.startsWith("table-")
+                    ? "#f59e0b"
+                    : obstacle.id.startsWith("checkout-")
+                    ? "#0284c7"
+                    : obstacle.id.startsWith("cart-")
+                    ? "#ea580c"
+                    : "#475569"
                 }
-                stroke="#94a3b8"
+                fillOpacity={obstacle.id.startsWith("col-") ? 0.85 : 0.88}
+                stroke="#e2e8f0"
                 strokeWidth={0.04}
               />
-              {index < 4 && (
-                <text
-                  x={obstacle.x}
-                  y={obstacle.z}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fill="#ffffff"
-                  fontSize="0.28"
-                  fontWeight="bold"
-                  transform={`rotate(-90 ${obstacle.x} ${obstacle.z})`}
-                >
-                  {index === 0 ? "KỆ 01: NƯỚC" : index === 1 ? "KỆ 02: SỮA" : index === 2 ? "KỆ 03: BÁNH" : "KỆ 04: GIA VỊ"}
-                </text>
-              )}
             </g>
           )
         )}
 
-        {/* Tủ đông tường sau */}
+        {/* Dãy Dairy & Frozen + Bakery & Deli Tường Bắc */}
         <g
           role="button"
           tabIndex={0}
@@ -305,26 +346,26 @@ export const FloorPlanMap: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             if (lm) handleLandmarkTeleport(lm);
           }}
         >
-          <rect x="-4.2" y="-6.3" width="8.4" height="0.4" fill="#0369a1" stroke="#38bdf8" strokeWidth={0.04} rx={0.05} />
-          <text x="0" y="-6.02" textAnchor="middle" fill="#bae6fd" fontSize="0.25" fontWeight="bold">❄ TỦ ĐÔNG LẠNH</text>
+          <text x="-10.3" y="-24.3" textAnchor="middle" fill="#0369a1" fontSize="0.52" fontWeight="bold">
+            ❄ DAIRY &amp; FROZEN
+          </text>
         </g>
 
-        {/* Quầy Self-checkout */}
         <g
           role="button"
           tabIndex={0}
           className="cursor-pointer hover:opacity-80"
           onClick={() => {
-            const lm = FAST_TRAVEL_LANDMARKS.find((l) => l.id === "checkout");
+            const lm = FAST_TRAVEL_LANDMARKS.find((l) => l.id === "bakery");
             if (lm) handleLandmarkTeleport(lm);
           }}
         >
-          <text x="0" y="-4.9" textAnchor="middle" fill="#6ee7b7" fontSize="0.32" fontWeight="bold">
-            💳 SELF-CHECKOUT 04
+          <text x="10.0" y="-24.3" textAnchor="middle" fill="#b45309" fontSize="0.52" fontWeight="bold">
+            🥐 BAKERY &amp; DELI
           </text>
         </g>
 
-        {/* Lối vào */}
+        {/* Lối vào Sảnh Kệ */}
         <g
           role="button"
           tabIndex={0}
@@ -334,8 +375,8 @@ export const FloorPlanMap: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             if (lm) handleLandmarkTeleport(lm);
           }}
         >
-          <text x="0" y="5.6" textAnchor="middle" fill="#94a3b8" fontSize="0.34" fontWeight="bold">
-            🚪 LỐI VÀO
+          <text x="0" y="8.6" textAnchor="middle" fill="#475569" fontSize="0.42" fontWeight="bold">
+            🚪 LỐI VÀO KỆ
           </text>
         </g>
 
@@ -349,10 +390,10 @@ export const FloorPlanMap: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             if (lm) handleLandmarkTeleport(lm);
           }}
         >
-          <text x="-7.75" y="15.7" textAnchor="middle" fill="#60a5fa" fontSize="0.55" fontWeight="bold">
+          <text x="-7.75" y="15.7" textAnchor="middle" fill="#2563eb" fontSize="0.55" fontWeight="bold">
             🏧 KIOSK TÂY (01-04)
           </text>
-          <text x="7.75" y="15.7" textAnchor="middle" fill="#60a5fa" fontSize="0.55" fontWeight="bold">
+          <text x="7.75" y="15.7" textAnchor="middle" fill="#2563eb" fontSize="0.55" fontWeight="bold">
             🏧 KIOSK ĐÔNG (05-08)
           </text>
         </g>
@@ -366,7 +407,7 @@ export const FloorPlanMap: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             if (lm) handleLandmarkTeleport(lm);
           }}
         >
-          <text x="-15.5" y="23.6" textAnchor="middle" fill="#fb923c" fontSize="0.52" fontWeight="bold">
+          <text x="-15.5" y="23.6" textAnchor="middle" fill="#ea580c" fontSize="0.52" fontWeight="bold">
             🛒 CHUỒNG XE ĐẨY
           </text>
         </g>
@@ -378,45 +419,14 @@ export const FloorPlanMap: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             points={path.map((point) => `${point.x},${point.z}`).join(" ")}
             fill="none"
             stroke="#ff5400"
-            strokeWidth={0.12}
+            strokeWidth={0.14}
             strokeLinejoin="round"
             strokeDasharray="0.22 0.14"
           />
         )}
 
-        {/* Các chấm sản phẩm 3D hợp nhất (Tạp hóa, Nông sản, Thời trang) */}
-        {ALL_PRODUCTS.filter((product) => product.has3D && product.shelfLocation).map((product) => {
-          const [x, , z] = product.shelfLocation!.worldPos;
-          const active = selected?.id === product.id;
-          return (
-            <g
-              key={product.id}
-              role="button"
-              tabIndex={0}
-              aria-label={`Dẫn đường đến ${product.name}`}
-              className="cursor-pointer outline-none focus:opacity-60"
-              onClick={() => chooseProduct(product)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  chooseProduct(product);
-                }
-              }}
-            >
-              <title>{product.name}</title>
-              <circle cx={x} cy={z} r={0.43} fill="transparent" />
-              <circle
-                cx={x}
-                cy={z}
-                r={active ? 0.25 : 0.17}
-                fill={active ? "#ff5400" : "#ffffff"}
-                stroke={active ? "#0f172a" : "#475569"}
-                strokeWidth={0.06}
-                aria-label={active ? "Vị trí sản phẩm đang dẫn đường" : undefined}
-              />
-            </g>
-          );
-        })}
+        {/* Các chấm sản phẩm 3D hợp nhất (React.memo tách khỏi radar pose 10Hz) */}
+        <ProductMapMarkers selectedId={selected?.id ?? null} onSelect={chooseProduct} />
 
         {/* Vị trí và nón nhìn của người chơi */}
         <g

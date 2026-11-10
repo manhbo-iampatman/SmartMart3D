@@ -14,9 +14,14 @@ export const ProductInspector3D: React.FC = () => {
 };
 
 const InspectorSession: React.FC<{ product: Product }> = ({ product: inspectingProduct }) => {
-  const { mode, setInspectingProduct, goToProductIn3D, navigateToProductIn3D } = useAppStore();
+  const mode = useAppStore((state) => state.mode);
+  const setInspectingProduct = useAppStore((state) => state.setInspectingProduct);
+  const goToProductIn3D = useAppStore((state) => state.goToProductIn3D);
+  const navigateToProductIn3D = useAppStore((state) => state.navigateToProductIn3D);
   const addItem = useCartStore((state) => state.addItem);
-  const { soundEnabled, setSoundEnabled, showCartNotice } = useFeedbackStore();
+  const soundEnabled = useFeedbackStore((state) => state.soundEnabled);
+  const setSoundEnabled = useFeedbackStore((state) => state.setSoundEnabled);
+  const showCartNotice = useFeedbackStore((state) => state.showCartNotice);
   const [autoRotate, setAutoRotate] = useState(() => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
   const [resetVersion, setResetVersion] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -74,36 +79,38 @@ const InspectorSession: React.FC<{ product: Product }> = ({ product: inspectingP
         role="dialog"
         aria-labelledby="inspector-product-title"
         aria-modal="false"
-        className="relative w-full max-w-[440px] h-full bg-white border-l border-slate-200 shadow-2xl overflow-hidden pointer-events-auto flex flex-col text-slate-900 animate-in slide-in-from-right duration-300 font-sans"
+        className="relative w-full max-w-[440px] h-full bg-hyper-card border-l border-hyper-border shadow-2xl overflow-hidden pointer-events-auto flex flex-col text-hyper-ink animate-hyper-slide-right font-sans"
       >
         {/* Nút đóng */}
         <button
           ref={closeButton}
           aria-label="Đóng thông tin sản phẩm"
           onClick={() => setInspectingProduct(null)}
-          className="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-slate-500 hover:text-slate-900 shadow-lg transition-colors"
+          className="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-hyper-card/95 border border-hyper-border hover:bg-white flex items-center justify-center text-slate-600 hover:text-hyper-ink shadow-md transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Khung xem mô hình 3D xoay 360 độ */}
-        <div className="w-full h-48 sm:h-60 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 relative flex items-center justify-center shrink-0">
+        {/* Khung xem mô hình 3D xoay 360 độ nền studio sáng đồng nhất Hypermarket */}
+        <div className="w-full h-48 sm:h-60 bg-hyper-surface border-b border-hyper-border relative flex items-center justify-center shrink-0">
           <ProductPreview3D product={inspectingProduct} autoRotate={autoRotate} resetVersion={resetVersion} />
-          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 text-[10px] text-slate-300">
-            <span className="pointer-events-none">Kéo để xoay · Cuộn để phóng to</span>
+          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 text-[10px] text-slate-600">
+            <span className="pointer-events-none rounded-md bg-hyper-card/90 border border-hyper-border px-2 py-0.5 font-medium">
+              Kéo để xoay · Cuộn để phóng to
+            </span>
             <div className="flex gap-1">
               <button
                 aria-label={autoRotate ? "Tạm dừng tự xoay" : "Bật tự xoay"}
                 aria-pressed={autoRotate}
                 onClick={() => setAutoRotate((value) => !value)}
-                className="rounded-lg bg-slate-800/90 p-2 hover:bg-slate-700 text-slate-200 transition-colors"
+                className="rounded-lg bg-hyper-card/95 border border-hyper-border p-2 hover:bg-white text-hyper-ink shadow-sm transition-colors"
               >
                 {autoRotate ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               </button>
               <button
                 aria-label="Đặt lại góc nhìn sản phẩm"
                 onClick={() => setResetVersion((value) => value + 1)}
-                className="rounded-lg bg-slate-800/90 p-2 hover:bg-slate-700 text-slate-200 transition-colors"
+                className="rounded-lg bg-hyper-card/95 border border-hyper-border p-2 hover:bg-white text-hyper-ink shadow-sm transition-colors"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>

@@ -88,4 +88,21 @@ describe("CartDrawer - Giỏ hàng trượt đồng bộ 2D & 3D (Phase 1)", () 
     expect(mockOnClose).toHaveBeenCalled();
     expect(useAppStore.getState().isCheckoutOpen).toBe(true);
   });
+
+  it("Phase 9 Gate 3: hỗ trợ Accessibility role='dialog', aria-labelledby, aria-label các nút và đóng bằng phím Escape", () => {
+    useCartStore.getState().addItem(haohao);
+    render(<CartDrawer isOpen={true} onClose={mockOnClose} />);
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog).toHaveAttribute("aria-labelledby", "cart-drawer-title");
+
+    expect(screen.getByRole("button", { name: "Đóng giỏ hàng" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: `Giảm số lượng ${haohao.name}` })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: `Tăng số lượng ${haohao.name}` })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: `Xóa ${haohao.name} khỏi giỏ` })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
 });

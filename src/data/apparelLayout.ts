@@ -33,7 +33,7 @@ export const APPAREL_ZONE_BOUNDS = {
   centerX: 13.0,
   centerZ: 7.5,
   width: 13.0,
-  depth: 14.0,
+  depth: 14.2,
   ceilingY: 4.5,
   maxFixtureHeight: 1.36, // Khống chế dưới 1.4m giữ tầm nhìn xuyên suốt (Low-profile sightlines)
 };
@@ -42,7 +42,7 @@ export const APPAREL_RACKS_CONFIG: readonly ApparelRackConfig[] = [
   {
     id: "apparel-rack-01",
     rackName: "Giá Treo Áo Thun 01",
-    position: [8.0, 0, 2.4],
+    position: [8.55, 0, 2.4],
     width: 1.6,
     depth: 0.68,
     maxHeight: 1.36,
@@ -55,7 +55,7 @@ export const APPAREL_RACKS_CONFIG: readonly ApparelRackConfig[] = [
   {
     id: "apparel-rack-02",
     rackName: "Giá Treo Sơ Mi 02",
-    position: [14.0, 0, 2.4],
+    position: [14.4, 0, 2.4],
     width: 1.6,
     depth: 0.68,
     maxHeight: 1.36,
@@ -68,7 +68,7 @@ export const APPAREL_RACKS_CONFIG: readonly ApparelRackConfig[] = [
   {
     id: "apparel-rack-03",
     rackName: "Giá Treo Áo Khoác 03",
-    position: [8.0, 0, 5.8],
+    position: [8.55, 0, 5.8],
     width: 1.6,
     depth: 0.68,
     maxHeight: 1.36,
@@ -81,7 +81,7 @@ export const APPAREL_RACKS_CONFIG: readonly ApparelRackConfig[] = [
   {
     id: "apparel-rack-04",
     rackName: "Giá Treo Quần Kaki 04",
-    position: [8.0, 0, 9.4],
+    position: [8.55, 0, 9.4],
     width: 1.6,
     depth: 0.68,
     maxHeight: 1.36,
@@ -97,7 +97,7 @@ export const APPAREL_TABLES_CONFIG: readonly ApparelTableConfig[] = [
   {
     id: "apparel-table-01",
     tableName: "Bàn Phụ Kiện Giày & Mũ 01",
-    position: [14.0, 0, 5.8],
+    position: [14.4, 0, 5.8],
     width: 1.6,
     depth: 1.0,
     maxHeight: 1.34,
@@ -108,7 +108,7 @@ export const APPAREL_TABLES_CONFIG: readonly ApparelTableConfig[] = [
   {
     id: "apparel-table-02",
     tableName: "Bàn Phụ Kiện Giày & Mũ 02",
-    position: [14.0, 0, 9.4],
+    position: [14.4, 0, 9.4],
     width: 1.6,
     depth: 1.0,
     maxHeight: 1.34,
@@ -119,7 +119,7 @@ export const APPAREL_TABLES_CONFIG: readonly ApparelTableConfig[] = [
   {
     id: "apparel-table-03",
     tableName: "Bàn Phụ Kiện Giày & Mũ 03",
-    position: [8.0, 0, 12.8],
+    position: [8.55, 0, 13.5],
     width: 1.6,
     depth: 1.0,
     maxHeight: 1.34,
@@ -130,7 +130,7 @@ export const APPAREL_TABLES_CONFIG: readonly ApparelTableConfig[] = [
   {
     id: "apparel-table-04",
     tableName: "Bàn Phụ Kiện Giày & Mũ 04",
-    position: [14.0, 0, 12.8],
+    position: [14.4, 0, 13.5],
     width: 1.6,
     depth: 1.0,
     maxHeight: 1.34,

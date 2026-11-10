@@ -78,4 +78,18 @@ describe("HeaderNavbar - Thanh điều hướng dùng chung 2D & 3D (Phase 1)", 
 
     expect(useAppStore.getState().isCartOpen).toBe(true);
   });
+
+  it("Phase 9 Gate 3: Logo sử dụng nút button truy cập bàn phím, nút xóa tìm kiếm có aria-label chuẩn", () => {
+    useAppStore.setState({ mode: "3D", searchQuery: "Hảo Hảo" });
+    render(<HeaderNavbar />);
+
+    const logoBtn = screen.getByRole("button", { name: /về trang mua nhanh smartmart 3d/i });
+    expect(logoBtn.tagName).toBe("BUTTON");
+    fireEvent.click(logoBtn);
+    expect(useAppStore.getState().mode).toBe("2D");
+
+    const clearBtn = screen.getByRole("button", { name: "Xóa tìm kiếm" });
+    fireEvent.click(clearBtn);
+    expect(useAppStore.getState().searchQuery).toBe("");
+  });
 });

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FloorPlanMap, FAST_TRAVEL_LANDMARKS } from "../components/3d/FloorPlanMap";
 import { useAppStore } from "../stores/useAppStore";
 import { useNavigationStore } from "../stores/useNavigationStore";
+import { isWalkable } from "../utils/pathfinding";
 
 describe("FloorPlanMap - Bản đồ tương tác & Fast-Travel (Sprint 1)", () => {
   beforeEach(() => {
@@ -27,40 +28,44 @@ describe("FloorPlanMap - Bản đồ tương tác & Fast-Travel (Sprint 1)", () 
     FAST_TRAVEL_LANDMARKS.forEach((landmark) => {
       const shortName = landmark.name.split(":")[0];
       expect(screen.getByText(shortName)).toBeInTheDocument();
+      expect(isWalkable({ x: landmark.x, z: landmark.z }), `Landmark ${landmark.id} phải đứng ở vị trí đi bộ được`).toBe(true);
     });
   });
 
-  it("click nút địa danh kích hoạt triggerFastTravel tới đúng tọa độ", () => {
+  it("click nút địa danh kích hoạt triggerFastTravel tới Tủ Đông tường Bắc và Bánh Mì Deli (Phase 7)", () => {
     const handleClose = vi.fn();
     render(<FloorPlanMap onClose={handleClose} />);
 
-    // Click vào Tủ Đông Lạnh
+    // Click vào Tủ Đông Lạnh ở tường Bắc (đã di dời từ z = -6.1)
     const freezerBtn = screen.getByTitle("Dịch chuyển nhanh đến Tủ Đông Lạnh");
     fireEvent.click(freezerBtn);
 
     const storeState = useAppStore.getState();
     expect(storeState.fastTravelTarget).toEqual({
-      x: 0,
-      z: -4.8,
-      heading: Math.PI,
+      x: -10.3,
+      z: -23.8,
+      heading: 0,
       label: "Tủ Đông Lạnh",
     });
 
     expect(screen.getByText(/Đang bay tới Tủ Đông Lạnh/i)).toBeInTheDocument();
   });
 
-  it("click quầy Self-Checkout kích hoạt dịch chuyển về trạm tính tiền", () => {
+  it("click quầy Bánh Mì & Deli kích hoạt dịch chuyển tới tường Bắc và không còn Thu Ngân 04 / Ụ Khuyến Mãi", () => {
     const handleClose = vi.fn();
     render(<FloorPlanMap onClose={handleClose} />);
 
-    const checkoutBtn = screen.getByTitle("Dịch chuyển nhanh đến Thu Ngân 04");
-    fireEvent.click(checkoutBtn);
+    expect(screen.queryByTitle(/Thu Ngân 04/i)).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/Ụ Khuyến Mãi/i)).not.toBeInTheDocument();
+
+    const bakeryBtn = screen.getByTitle("Dịch chuyển nhanh đến Bánh Mì & Deli");
+    fireEvent.click(bakeryBtn);
 
     expect(useAppStore.getState().fastTravelTarget).toEqual({
-      x: 0,
-      z: -3.4,
-      heading: Math.PI,
-      label: "Thu Ngân 04",
+      x: 10.4,
+      z: -23.8,
+      heading: 0,
+      label: "Bánh Mì & Deli",
     });
   });
 

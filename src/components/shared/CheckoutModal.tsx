@@ -5,34 +5,42 @@ import { useAppStore } from "../../stores/useAppStore";
 import { useCheckoutStore } from "../../stores/useCheckoutStore";
 
 export const CheckoutModal: React.FC = () => {
-  const { isCheckoutOpen, setIsCheckoutOpen, setIsCartOpen } = useAppStore();
-  const { getTotalVND, getTotalItems, clearCart, items } = useCartStore();
-  const {
-    phase,
-    activeKioskId,
-    orderCode,
-    paymentMethod,
-    scannedCount,
-    setPaymentMethod,
-    skipScanning,
-    confirmPayment,
-    resetCheckout,
-  } = useCheckoutStore();
-
+  const isCheckoutOpen = useAppStore((state) => state.isCheckoutOpen);
   const wasOpenRef = useRef(false);
 
   // Tự động reset khi mở phiên thanh toán mới sau khi đơn trước đã hoàn tất (tương thích Test 2 -> Test 3)
   useEffect(() => {
-    if (isCheckoutOpen && !wasOpenRef.current && phase === "success") {
-      resetCheckout();
+    if (isCheckoutOpen && !wasOpenRef.current) {
+      const checkout = useCheckoutStore.getState();
+      if (checkout.phase === "success") {
+        checkout.resetCheckout();
+      }
     }
     wasOpenRef.current = isCheckoutOpen;
-  }, [isCheckoutOpen, phase, resetCheckout]);
+  }, [isCheckoutOpen]);
 
   if (!isCheckoutOpen) return null;
+  return <CheckoutModalSession />;
+};
 
-  const totalVND = getTotalVND();
-  const totalItems = getTotalItems();
+const CheckoutModalSession: React.FC = () => {
+  const setIsCheckoutOpen = useAppStore((state) => state.setIsCheckoutOpen);
+  const setIsCartOpen = useAppStore((state) => state.setIsCartOpen);
+  const totalVND = useCartStore((state) => state.getTotalVND());
+  const totalItems = useCartStore((state) => state.getTotalItems());
+  const clearCart = useCartStore((state) => state.clearCart);
+  const items = useCartStore((state) => state.items);
+  const phase = useCheckoutStore((state) => state.phase);
+  const activeKioskId = useCheckoutStore((state) => state.activeKioskId);
+  const orderCode = useCheckoutStore((state) => state.orderCode);
+  const paymentMethod = useCheckoutStore((state) => state.paymentMethod);
+  const scannedCount = useCheckoutStore((state) => state.scannedCount);
+  const setPaymentMethod = useCheckoutStore((state) => state.setPaymentMethod);
+  const skipScanning = useCheckoutStore((state) => state.skipScanning);
+  const confirmPayment = useCheckoutStore((state) => state.confirmPayment);
+  const resetCheckout = useCheckoutStore((state) => state.resetCheckout);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
   const isSuccess = phase === "success";
   const isScanning = phase === "scanning";
 
@@ -41,12 +49,34 @@ export const CheckoutModal: React.FC = () => {
   };
 
   const handleClose = () => {
-    if (isSuccess) {
+    if (phase === "success") {
       clearCart();
       resetCheckout();
     }
     setIsCheckoutOpen(false);
   };
+
+  useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    closeButtonRef.current?.focus({ preventScroll: true });
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (useCheckoutStore.getState().phase === "success") {
+          useCartStore.getState().clearCart();
+          useCheckoutStore.getState().resetCheckout();
+        }
+        useAppStore.getState().setIsCheckoutOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      if (previousFocus?.isConnected) {
+        previousFocus.focus({ preventScroll: true });
+      }
+    };
+  }, []);
 
   const handleBackToCart = () => {
     resetCheckout();
@@ -54,17 +84,21 @@ export const CheckoutModal: React.FC = () => {
     setIsCartOpen(true);
   };
 
-  const stationBadge =
-    activeKioskId === "checkout-04" ? "Self-Checkout 04" : `Self-Checkout ${activeKioskId}`;
+  const stationBadge = `Self-Checkout ${activeKioskId}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 select-none font-sans">
       <div
-        className="fixed inset-0 bg-hyper-ink/70 backdrop-blur-sm"
+        className="fixed inset-0 bg-hyper-ink/70 animate-hyper-fade-in"
         onClick={handleClose}
       />
 
-      <div className="relative w-full max-w-lg bg-hyper-card rounded-2xl shadow-2xl overflow-hidden z-10 text-hyper-ink border border-hyper-border">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="checkout-modal-title"
+        className="relative w-full max-w-lg bg-hyper-card rounded-2xl shadow-2xl overflow-hidden z-10 text-hyper-ink border border-hyper-border animate-hyper-modal-pop"
+      >
         {/* Header Quầy Self-Checkout chuẩn Modern Architectural Hypermarket */}
         <div className="bg-hyper-ink text-white p-5 flex items-center justify-between border-b border-slate-800">
           <div>
@@ -74,7 +108,7 @@ export const CheckoutModal: React.FC = () => {
               </span>
               <span className="text-[11px] text-slate-300">Siêu thị SmartMart 3D</span>
             </div>
-            <h3 className="font-extrabold text-lg mt-1 text-white">
+            <h3 id="checkout-modal-title" className="font-extrabold text-lg mt-1 text-white">
               {isSuccess
                 ? "Thanh Toán Thành Công!"
                 : isScanning
@@ -83,9 +117,11 @@ export const CheckoutModal: React.FC = () => {
             </h3>
           </div>
           <button
+            ref={closeButtonRef}
+            type="button"
             aria-label="Đóng thanh toán"
             onClick={handleClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <X className="w-5 h-5" />
           </button>

@@ -1,5 +1,5 @@
-import { render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, render } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 import { CheckoutBank, buildCheckoutBankBatches, getKioskIndexFromSolidInstance } from "../components/3d/CheckoutBank";
 import { CartCorral, buildCartCorralBatches } from "../components/3d/CartCorral";
@@ -12,6 +12,9 @@ import {
 import { STORE_COLUMNS } from "../data/storeLayout";
 import { MOCK_PRODUCTS } from "../data/mockProducts";
 import { findReachableProduct, PRODUCT_REACH_METERS } from "../utils/spatialInteraction";
+import { useCartStore } from "../stores/useCartStore";
+import { useCheckoutStore } from "../stores/useCheckoutStore";
+import { useAppStore } from "../stores/useAppStore";
 
 vi.mock("@react-three/fiber", () => ({
   useFrame: () => {},
@@ -188,5 +191,38 @@ describe("CheckoutBank & CartCorral - Cụm Kiosk Sảnh Nam & Chuồng Xe Đẩ
     const ray = new THREE.Raycaster(new THREE.Vector3(0, 0.8, 0), new THREE.Vector3(0, 0, -1), 0, PRODUCT_REACH_METERS);
     const hit = findReachableProduct(ray, scene.children);
     expect(hit?.product.id).toBe(product.id);
+  });
+
+  it("chạy trọn vẹn chu trình Self-Checkout 4 bước qua SCO-01..08 (thay thế Checkout 04 cũ)", () => {
+    act(() => {
+      useCartStore.getState().clearCart();
+      useCheckoutStore.getState().resetCheckout();
+      useAppStore.setState({ mode: "3D", isCartOpen: false, isCheckoutOpen: false });
+    });
+
+    const haohao = MOCK_PRODUCTS.find((p) => p.id === "prod-noodle-haohao")!;
+    expect(useCheckoutStore.getState().activeKioskId).toBe("SCO-01");
+
+    act(() => {
+      useCartStore.getState().addItem(haohao);
+      useCheckoutStore.getState().setActiveKioskId("SCO-03");
+      useCheckoutStore.getState().startCheckout();
+      useAppStore.getState().setIsCheckoutOpen(true);
+    });
+
+    const scanningView = render(<CheckoutBank />);
+    expect(useCheckoutStore.getState().phase).toBe("scanning");
+    expect(useCheckoutStore.getState().orderCode).toMatch(/^SM3D-\d{6}$/);
+    expect(scanningView.container.textContent).not.toContain("CHECKOUT 04");
+
+    act(() => {
+      useCheckoutStore.getState().skipScanning(1);
+    });
+    expect(useCheckoutStore.getState().phase).toBe("payment");
+
+    act(() => {
+      useCheckoutStore.getState().confirmPayment();
+    });
+    expect(useCheckoutStore.getState().phase).toBe("success");
   });
 });

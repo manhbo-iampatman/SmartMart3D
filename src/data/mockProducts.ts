@@ -17,7 +17,7 @@ export const MOCK_PRODUCTS: Product[] = [
     shelfLocation: {
       aisle: "Aisle 02 (Sữa & Cà phê)",
       shelfTier: 2,
-      worldPos: [-2.1, 1.2, -1.8],
+      worldPos: [-2.1, 1.2, -6.2],
     },
   },
   {
@@ -35,7 +35,7 @@ export const MOCK_PRODUCTS: Product[] = [
     shelfLocation: {
       aisle: "Aisle 04 (Gia vị & Đồ khô)",
       shelfTier: 1,
-      worldPos: [4.9, 0.65, -0.6],
+      worldPos: [4.9, 0.65, -3.8],
     },
   },
   {
@@ -53,7 +53,7 @@ export const MOCK_PRODUCTS: Product[] = [
     shelfLocation: {
       aisle: "Aisle 01 (Nước giải khát & Bia)",
       shelfTier: 3,
-      worldPos: [-4.9, 1.75, -0.6],
+      worldPos: [-4.9, 1.75, -3.8],
     },
   },
   {
@@ -71,7 +71,7 @@ export const MOCK_PRODUCTS: Product[] = [
     shelfLocation: {
       aisle: "Aisle 02 (Sữa & Cà phê)",
       shelfTier: 2,
-      worldPos: [-2.1, 1.2, 1.8],
+      worldPos: [-2.1, 1.2, -5.0],
     },
   },
   {
@@ -89,7 +89,7 @@ export const MOCK_PRODUCTS: Product[] = [
     shelfLocation: {
       aisle: "Aisle 03 (Bánh kẹo & Mì gói)",
       shelfTier: 2,
-      worldPos: [2.1, 1.2, -1.8],
+      worldPos: [2.1, 1.2, -6.2],
     },
   },
   {
@@ -107,7 +107,7 @@ export const MOCK_PRODUCTS: Product[] = [
     shelfLocation: {
       aisle: "Aisle 03 (Bánh kẹo & Mì gói)",
       shelfTier: 3,
-      worldPos: [2.1, 1.75, -0.6],
+      worldPos: [2.1, 1.75, 2.6],
     },
   },
   {
@@ -125,7 +125,7 @@ export const MOCK_PRODUCTS: Product[] = [
     shelfLocation: {
       aisle: "Aisle 01 (Nước giải khát & Bia)",
       shelfTier: 1,
-      worldPos: [-4.9, 0.65, 0.6],
+      worldPos: [-4.9, 0.65, 2.6],
     },
   },
   {
@@ -143,7 +143,7 @@ export const MOCK_PRODUCTS: Product[] = [
     shelfLocation: {
       aisle: "Aisle 04 (Gia vị & Đồ khô)",
       shelfTier: 1,
-      worldPos: [4.9, 0.65, 1.8],
+      worldPos: [4.9, 0.65, 2.6],
     },
   },
   // Các sản phẩm chỉ có ở chế độ 2D (chưa cần làm 3D để kiểm chứng tính năng Hybrid)

@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import { AppMode, Product } from "../types";
 import { useNavigationStore } from "./useNavigationStore";
-import { getShelfApproach } from "../utils/pathfinding";
+import { getShelfApproach, isWalkable } from "../utils/pathfinding";
+import { MAIN_CONCOURSE_ENTRANCE } from "../data/storeLayout";
 import type { CameraPreset } from "../data/cameraPresets";
+import type { StoreZoneConfig } from "../data/storeZones";
 
 function shelfDestination(product: Product | null) {
   const position = product?.has3D ? product.shelfLocation?.worldPos : undefined;
@@ -42,6 +44,7 @@ interface AppState {
   target3DPosition: [number, number, number] | null;
   setTarget3DPosition: (pos: [number, number, number] | null) => void;
   goToProductIn3D: (product: Product) => void;
+  goToZoneIn3D: (zone: StoreZoneConfig) => void;
   navigateToProductIn3D: (product: Product) => void;
   openProductIn2D: (product: Product) => void;
 
@@ -61,6 +64,8 @@ interface AppState {
   activePresetTarget: CameraPreset | null;
   setActivePresetTarget: (preset: CameraPreset | null) => void;
   activateCameraPreset: (preset: CameraPreset) => void;
+  isSceneCompiled: boolean;
+  setIsSceneCompiled: (compiled: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -141,6 +146,27 @@ export const useAppStore = create<AppState>((set) => ({
       });
     }
   },
+  goToZoneIn3D: (zone) => {
+    const nav = useNavigationStore.getState();
+    nav.setAutoWalking(false);
+    nav.setDestination(null);
+    const candidate = { x: zone.entry3D.x, z: zone.entry3D.z };
+    const safePos = isWalkable(candidate) ? candidate : MAIN_CONCOURSE_ENTRANCE;
+    nav.updatePose(safePos, zone.entry3D.heading, true);
+    set({
+      mode: "3D",
+      inspectingProduct: null,
+      isCartOpen: false,
+      isCheckoutOpen: false,
+      activeNavigationProduct: null,
+      target3DPosition: null,
+      fastTravelTarget: null,
+      hoveredProduct: null,
+      hoveredDistance: null,
+      isOverviewMode: false,
+      activePresetTarget: null,
+    });
+  },
   navigateToProductIn3D: (product) => {
     if (!product.has3D || !product.shelfLocation) {
       useNavigationStore.getState().setDestination(null);
@@ -183,6 +209,10 @@ export const useAppStore = create<AppState>((set) => ({
   setIsOverviewMode: (isOverviewMode) => set({ isOverviewMode }),
   activePresetTarget: null,
   setActivePresetTarget: (activePresetTarget) => set({ activePresetTarget }),
+  isSceneCompiled: false,
+  setIsSceneCompiled: (isSceneCompiled) => set((state) => (
+    state.isSceneCompiled === isSceneCompiled ? state : { isSceneCompiled }
+  )),
   activateCameraPreset: (preset) => {
     useNavigationStore.getState().setAutoWalking(false);
     useNavigationStore.getState().setDestination(null);

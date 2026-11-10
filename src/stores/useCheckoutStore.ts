@@ -28,7 +28,7 @@ export const generateOrderCode = (): string =>
 
 export const useCheckoutStore = create<CheckoutStoreState>((set) => ({
   phase: "idle",
-  activeKioskId: "checkout-04",
+  activeKioskId: "SCO-01",
   currentItemIndex: 0,
   scannedCount: 0,
   scanProgress: 0,

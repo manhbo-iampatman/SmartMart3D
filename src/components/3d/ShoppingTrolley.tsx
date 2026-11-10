@@ -1,9 +1,9 @@
-import React, { useRef, useState, useEffect, useLayoutEffect, useMemo } from "react";
+import React, { useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useCartStore } from "../../stores/useCartStore";
 import { playCartDropClack } from "../../utils/supermarketAudio";
-import { getWireMeshTexture } from "../../utils/textureGenerator";
+import { getTrolleyBlobShadowTexture, getWireMeshTexture } from "../../utils/textureGenerator";
 import { applyMatricesToInstancedMesh } from "../../utils/instancingHelper";
 
 /**
@@ -13,26 +13,26 @@ import { applyMatricesToInstancedMesh } from "../../utils/instancingHelper";
  * - Tay cầm bọc đệm màu cam Persimmon đặc trưng
  * - Đồ trong giỏ hàng xuất hiện trực tiếp trong lòng xe khi người dùng nhặt hàng
  * - Chuyển động quán tính nhẹ (inertial sway & bobbing) khi di chuyển
- * - Animation sản phẩm thu nhỏ bay vào lòng xe đẩy (Parabolic Drop Animation)
+ * - Animation sản phẩm thu nhỏ bay vào lòng xe đẩy (Parabolic Drop Animation - zero setState)
  */
 export const ShoppingTrolley: React.FC = () => {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null);
   const items = useCartStore((state) => state.items);
-  const totalItems = useCartStore((state) => state.getTotalItems());
+  const totalItems = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
 
   const previousPos = useRef(new THREE.Vector3());
+  const forwardVec = useRef(new THREE.Vector3());
   const trolleyPos = useRef(new THREE.Vector3());
   const trolleyRotY = useRef(0);
+  const initializedRef = useRef(false);
   const walkPhase = useRef(0);
 
-  // Quản lý animation rơi đồ vào giỏ xe đẩy
+  // Quản lý animation rơi đồ vào giỏ xe đẩy hoàn toàn qua ref (không re-render React trong useFrame)
   const previousTotal = useRef(totalItems);
-  const [dropAnim, setDropAnim] = useState<{ active: boolean; progress: number; color: string }>({
-    active: false,
-    progress: 0,
-    color: "#ff5400",
-  });
+  const dropAnimRef = useRef({ active: false, progress: 0 });
+  const dropGroupRef = useRef<THREE.Group>(null);
+  const blobShadowRef = useRef<THREE.Mesh>(null);
 
   const solidRef = useRef<THREE.InstancedMesh>(null);
   const polesRef = useRef<THREE.InstancedMesh>(null);
@@ -42,6 +42,7 @@ export const ShoppingTrolley: React.FC = () => {
   const unitBox = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
   const unitCyl = useMemo(() => new THREE.CylinderGeometry(0.5, 0.5, 1, 12), []);
   const wireTex = useMemo(() => getWireMeshTexture(), []);
+  const blobShadowTex = useMemo(() => getTrolleyBlobShadowTexture(), []);
 
   const mats = useMemo(() => ({
     solidVertex: new THREE.MeshStandardMaterial({ color: "#ffffff", metalness: 0.55, roughness: 0.25 }),
@@ -54,7 +55,23 @@ export const ShoppingTrolley: React.FC = () => {
       side: THREE.DoubleSide,
     }),
     itemVertex: new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.3, metalness: 0.1 }),
-  }), [wireTex]);
+    dropItemMat: new THREE.MeshStandardMaterial({
+      color: "#ff5400",
+      emissive: "#ff5400",
+      emissiveIntensity: 0.25,
+      roughness: 0.2,
+    }),
+    blobShadow: new THREE.MeshBasicMaterial({
+      ...(blobShadowTex.image ? { map: blobShadowTex } : {}),
+      color: blobShadowTex.image ? "#ffffff" : "#0f172a",
+      transparent: true,
+      opacity: blobShadowTex.image ? 1.0 : 0.22,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
+    }),
+  }), [wireTex, blobShadowTex]);
 
   const staticBatches = useMemo(() => {
     const solids: THREE.Matrix4[] = [];
@@ -157,48 +174,73 @@ export const ShoppingTrolley: React.FC = () => {
     if (totalItems > previousTotal.current) {
       const lastItem = items[items.length - 1];
       const color = lastItem?.product.color || "#ff5400";
-      setDropAnim({ active: true, progress: 0, color });
+      mats.dropItemMat.color.set(color);
+      mats.dropItemMat.emissive.set(color);
+      dropAnimRef.current.active = true;
+      dropAnimRef.current.progress = 0;
+      if (dropGroupRef.current) {
+        dropGroupRef.current.visible = true;
+      }
       playCartDropClack();
     }
     previousTotal.current = totalItems;
-  }, [totalItems, items]);
+  }, [totalItems, items, mats]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
+    const dt = Math.min(delta, 0.05);
 
-    // Tiến trình animation rơi đồ
-    if (dropAnim.active) {
-      const nextProgress = dropAnim.progress + delta * 2.4;
+    // Tiến trình animation rơi đồ cập nhật trực tiếp Matrix/Visible (0 React setState)
+    if (dropAnimRef.current.active && dropGroupRef.current) {
+      const nextProgress = dropAnimRef.current.progress + dt * 2.4;
       if (nextProgress >= 1) {
-        setDropAnim((prev) => ({ ...prev, active: false, progress: 1 }));
+        dropAnimRef.current.active = false;
+        dropAnimRef.current.progress = 1;
+        dropGroupRef.current.visible = false;
       } else {
-        setDropAnim((prev) => ({ ...prev, progress: nextProgress }));
+        dropAnimRef.current.progress = nextProgress;
+        const dropY = THREE.MathUtils.lerp(1.05, 0.02, nextProgress) + Math.sin(nextProgress * Math.PI) * 0.22;
+        const dropZ = THREE.MathUtils.lerp(-0.15, 0.05, nextProgress);
+        const dropScale = THREE.MathUtils.lerp(1.35, 1.0, nextProgress);
+        dropGroupRef.current.visible = true;
+        dropGroupRef.current.position?.set(0, 0.62 + dropY, dropZ);
+        dropGroupRef.current.scale?.setScalar(dropScale);
       }
     }
 
-    // Tính hướng nhìn ngang của camera (Yaw)
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    // Tính hướng nhìn ngang của camera (Yaw) không cấp phát Vector3 mới
+    const forward = forwardVec.current.set(0, 0, -1).applyQuaternion(camera.quaternion);
     const yaw = Math.atan2(forward.x, -forward.z);
 
-    // Tính vận tốc di chuyển
     const currentCamPos = camera.position;
-    const speed = currentCamPos.distanceTo(previousPos.current) / Math.max(delta, 0.001);
+    const targetX = currentCamPos.x + Math.sin(yaw) * 0.82;
+    const targetZ = currentCamPos.z - Math.cos(yaw) * 0.82;
+
+    if (!initializedRef.current) {
+      trolleyPos.current.set(targetX, 0, targetZ);
+      trolleyRotY.current = yaw;
+      previousPos.current.copy(currentCamPos);
+      initializedRef.current = true;
+      groupRef.current.position?.set(targetX, 0, targetZ);
+      if (groupRef.current.rotation) groupRef.current.rotation.y = yaw;
+      blobShadowRef.current?.position?.set(0, 0.012, 0);
+      return;
+    }
+
+    // Tính vận tốc di chuyển
+    const speed = currentCamPos.distanceTo(previousPos.current) / Math.max(dt, 0.001);
     previousPos.current.copy(currentCamPos);
 
     // Hiệu ứng nhịp bước chân (bobbing) khi người chơi đi bộ
     if (speed > 0.3) {
-      walkPhase.current += delta * 9;
+      walkPhase.current += dt * 9;
     }
     const bob = Math.sin(walkPhase.current) * (speed > 0.3 ? 0.012 : 0);
 
-    // Điểm đích của xe đẩy: phía trước camera khoảng 0.82m, đặt trên mặt sàn (y = 0)
-    const targetX = currentCamPos.x + Math.sin(yaw) * 0.82;
-    const targetZ = currentCamPos.z - Math.cos(yaw) * 0.82;
-
-    // Làm mượt vị trí (lerp) để xe có độ trễ quán tính tự nhiên
-    const lerpFactor = Math.min(1, delta * 14);
-    trolleyPos.current.x = THREE.MathUtils.lerp(trolleyPos.current.x || targetX, targetX, lerpFactor);
-    trolleyPos.current.z = THREE.MathUtils.lerp(trolleyPos.current.z || targetZ, targetZ, lerpFactor);
+    // Làm mượt vị trí (lerp) để xe có độ trễ quán tính tự nhiên (hỗ trợ cả tọa độ 0)
+    const lerpFactor = Math.min(1, dt * 14);
+    trolleyPos.current.x = THREE.MathUtils.lerp(trolleyPos.current.x, targetX, lerpFactor);
+    trolleyPos.current.z = THREE.MathUtils.lerp(trolleyPos.current.z, targetZ, lerpFactor);
 
     // Làm mượt góc quay theo hướng đi
     let angleDiff = yaw - trolleyRotY.current;
@@ -206,15 +248,11 @@ export const ShoppingTrolley: React.FC = () => {
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
     trolleyRotY.current += angleDiff * lerpFactor;
 
-    groupRef.current.position.set(trolleyPos.current.x, bob, trolleyPos.current.z);
-    groupRef.current.rotation.y = trolleyRotY.current;
+    groupRef.current.position?.set(trolleyPos.current.x, bob, trolleyPos.current.z);
+    if (groupRef.current.rotation) groupRef.current.rotation.y = trolleyRotY.current;
+    // Bù trừ cao độ bob trực tiếp bằng ref để Blob Shadow luôn bám sát mặt sàn (worldY = 0.012)
+    blobShadowRef.current?.position?.set(0, 0.012 - bob, 0);
   });
-
-  // Tính toán vị trí và độ phóng to của món đồ đang bay vào xe
-  const p = dropAnim.progress;
-  const dropY = THREE.MathUtils.lerp(1.05, 0.02, p) + Math.sin(p * Math.PI) * 0.22;
-  const dropZ = THREE.MathUtils.lerp(-0.15, 0.05, p);
-  const dropScale = THREE.MathUtils.lerp(1.35, 1.0, p);
 
   return (
     <group
@@ -227,27 +265,31 @@ export const ShoppingTrolley: React.FC = () => {
       <instancedMesh ref={polesRef} args={[unitCyl, mats.solidVertex, staticBatches.poles.length]} />
       <instancedMesh ref={basketRef} args={[unitBox, mats.wireBasket, staticBatches.basketFaces.length]} />
 
-      {/* 2. Animation món hàng đang bay theo đường cong vào giỏ (Drop Animation) */}
-      {dropAnim.active && (
-        <group position={[0, 0.62 + dropY, dropZ]} scale={dropScale}>
-          <mesh castShadow>
-            <boxGeometry args={[0.18, 0.2, 0.16]} />
-            <meshStandardMaterial
-              color={dropAnim.color}
-              emissive={dropAnim.color}
-              emissiveIntensity={0.25}
-              roughness={0.2}
-            />
-          </mesh>
-        </group>
-      )}
+      {/* 1b. Blob Contact Shadow động theo gầm xe đẩy (0 shadowMap cost, bù -bob tránh chìm sàn) */}
+      <mesh
+        ref={blobShadowRef}
+        position={[0, 0.012, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        material={mats.blobShadow}
+        renderOrder={2}
+        raycast={() => {}}
+      >
+        <planeGeometry args={[0.78, 0.94]} />
+      </mesh>
 
-      {/* 3. Các món hàng trong giỏ gộp chung 1 InstancedMesh */}
+      {/* 2. Animation món hàng đang bay theo đường cong vào giỏ (Ref-driven, 0 re-render) */}
+      <group ref={dropGroupRef} visible={false} position={[0, 1.67, -0.15]} scale={1.35}>
+        <mesh raycast={() => {}} material={mats.dropItemMat}>
+          <boxGeometry args={[0.18, 0.2, 0.16]} />
+        </mesh>
+      </group>
+
+      {/* 3. Các món hàng trong giỏ gộp chung 1 InstancedMesh (tắt castShadow tối ưu GPU) */}
       {cartItemBatch.matrices.length > 0 && (
         <instancedMesh
           ref={cartItemsRef}
           args={[unitBox, mats.itemVertex, cartItemBatch.matrices.length]}
-          castShadow
+          raycast={() => {}}
         />
       )}
     </group>

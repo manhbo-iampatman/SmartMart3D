@@ -19,7 +19,7 @@ export const App: React.FC = () => {
       {/* 2. Nội dung chính: Tùy biến theo chế độ đang chọn */}
       <main className="flex-1 relative overflow-hidden">
         {mode === "2D" ? (
-          <div className="w-full h-full overflow-y-auto p-4 md:p-6 bg-hyper-surface text-hyper-ink">
+          <div className="w-full h-full overflow-y-auto bg-hyper-surface text-hyper-ink">
             <QuickShopView />
           </div>
         ) : (

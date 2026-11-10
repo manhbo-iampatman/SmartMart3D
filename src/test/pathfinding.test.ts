@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ENTRANCE, MAIN_CONCOURSE_ENTRANCE, PROMOTION_LAYOUT, STORE_LAYOUT, type NavigationLayout } from "../data/storeLayout";
+import { ENTRANCE, MAIN_CONCOURSE_ENTRANCE, STORE_COLUMNS, STORE_LAYOUT, type NavigationLayout } from "../data/storeLayout";
 import { ALL_PRODUCTS } from "../data/catalog";
 import { findPath, floorDistance, getShelfApproach, isWalkable, isWalkableSegment, moveWithCollisions, pathLength } from "../utils/pathfinding";
 
@@ -12,15 +12,19 @@ describe("A* và mặt bằng đi lại", () => {
     expect(pathLength(path)).toBeCloseTo(floorDistance(start, goal));
   });
 
-  it("đi vòng đảo khuyến mãi, mọi đoạn đường đều đủ khoảng trống cho người chơi", () => {
-    const goal = { x: 0, z: -3.5 };
-    expect(isWalkableSegment(ENTRANCE, goal)).toBe(false);
-    const path = findPath(ENTRANCE, goal)!;
+  it("trục chính Main Concourse thông thoáng 100% và tự động đi vòng khi vượt qua dãy kệ Gondola", () => {
+    const northConcourse = { x: 0, z: -24.0 };
+    expect(isWalkableSegment({ x: 0, z: 12.0 }, northConcourse)).toBe(true);
+    expect(findPath({ x: 0, z: 12.0 }, northConcourse)).toEqual([{ x: 0, z: 12.0 }, northConcourse]);
+
+    const behindWestGondola = { x: -4.0, z: 4.4 };
+    const startSouth = { x: 0, z: 4.4 };
+    expect(isWalkableSegment(startSouth, behindWestGondola)).toBe(false);
+    const path = findPath(startSouth, behindWestGondola)!;
     expect(path.length).toBeGreaterThan(2);
-    expect(path[0]).toEqual(ENTRANCE);
-    expect(path[path.length - 1]).toEqual(goal);
+    expect(path[0]).toEqual(startSouth);
+    expect(path[path.length - 1]).toEqual(behindWestGondola);
     path.slice(1).forEach((point, index) => expect(isWalkableSegment(path[index], point)).toBe(true));
-    expect(pathLength(path)).toBeGreaterThan(floorDistance(ENTRANCE, goal));
   });
 
   it.each(ALL_PRODUCTS.filter((product) => product.has3D))("tới được kệ/quầy $id (Tạp hóa, Nông sản, Thời trang) và không đặt camera trong vật cản", (product) => {
@@ -34,14 +38,14 @@ describe("A* và mặt bằng đi lại", () => {
   });
 
   it("đi vòng đầu kệ để sang lối ngoài, không xuyên ngang kệ", () => {
-    const path = findPath(ENTRANCE, { x: 4, z: 0 })!;
+    const path = findPath({ x: 0, z: 4.4 }, { x: 4, z: 4.4 })!;
     expect(path).not.toBeNull();
-    expect(path.some((point) => Math.abs(point.z) > 4.5)).toBe(true);
+    expect(path.some((point) => Math.abs(point.z - 4.4) > 2.4)).toBe(true);
     path.slice(1).forEach((point, index) => expect(isWalkableSegment(path[index], point)).toBe(true));
   });
 
   it("không báo đường thành công khi điểm đích nằm trong vật cản hoặc ngoài sàn", () => {
-    expect(findPath(ENTRANCE, PROMOTION_LAYOUT)).toBeNull();
+    expect(findPath(ENTRANCE, { x: -2.6, z: 4.4 })).toBeNull();
     expect(findPath(ENTRANCE, { x: 100, z: 0 })).toBeNull();
     expect(findPath({ x: NaN, z: 0 }, ENTRANCE)).toBeNull();
   });
@@ -107,5 +111,43 @@ describe("A* và mặt bằng đi lại", () => {
     const pathToCorral = findPath(MAIN_CONCOURSE_ENTRANCE, cartApproach)!;
     expect(pathToCorral).not.toBeNull();
     pathToCorral.slice(1).forEach((point, index) => expect(isWalkableSegment(pathToCorral[index], point)).toBe(true));
+
+    // Phase 7: Đường dẫn tới khu Dairy & Frozen (-10.3, -23.8) & Bakery (10.4, -23.8) thông suốt
+    const pathToFreezer = findPath(MAIN_CONCOURSE_ENTRANCE, { x: -10.3, z: -23.8 })!;
+    const pathToBakery = findPath(MAIN_CONCOURSE_ENTRANCE, { x: 10.4, z: -23.8 })!;
+    expect(pathToFreezer).not.toBeNull();
+    expect(pathToBakery).not.toBeNull();
+  });
+
+  it("cổng kiểm toán Phase 7: mọi khe lối đi >= 1.80m và 0 quầy kệ giao cắt cột ±10m", () => {
+    const rectObstacles = STORE_LAYOUT.obstacles.filter(
+      (o): o is Extract<(typeof STORE_LAYOUT.obstacles)[number], { kind: "rect" }> => o.kind === "rect"
+    );
+    const nonColumnFixtures = rectObstacles.filter((o) => !o.id.startsWith("col-"));
+
+    // 1. Không có quầy/kệ/tủ nào đè lên 12 cột kết cấu (±10m)
+    for (const col of STORE_COLUMNS) {
+      for (const fx of nonColumnFixtures) {
+        const overlapX = Math.abs(fx.x - col.x) < fx.width / 2 + 0.275;
+        const overlapZ = Math.abs(fx.z - col.z) < fx.depth / 2 + 0.275;
+        expect(overlapX && overlapZ, `${fx.id} giao cắt cột ${col.id}`).toBe(false);
+      }
+    }
+
+    // 2. Mọi cặp kệ/quầy đối diện cùng hàng Z đều có khe đi >= 1.80m (hoặc kề khít < 0.05m)
+    for (let i = 0; i < rectObstacles.length; i++) {
+      for (let j = i + 1; j < rectObstacles.length; j++) {
+        const a = rectObstacles[i];
+        const b = rectObstacles[j];
+        const gapZ = Math.abs(a.z - b.z) - (a.depth + b.depth) / 2;
+        const gapX = Math.abs(a.x - b.x) - (a.width + b.width) / 2;
+        if (gapZ < -0.05 && gapX >= 0.05) {
+          expect(gapX, `Khe ngang giữa ${a.id} và ${b.id} chỉ có ${gapX.toFixed(2)}m < 1.80m`).toBeGreaterThanOrEqual(1.8);
+        }
+        if (gapX < -0.05 && gapZ >= 0.05) {
+          expect(gapZ, `Khe dọc giữa ${a.id} và ${b.id} chỉ có ${gapZ.toFixed(2)}m < 1.80m`).toBeGreaterThanOrEqual(1.8);
+        }
+      }
+    }
   });
 });

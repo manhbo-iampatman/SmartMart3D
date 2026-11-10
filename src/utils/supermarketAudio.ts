@@ -13,6 +13,12 @@ let isRolling = false;
 let freezerOscillator: OscillatorNode | null = null;
 let freezerGain: GainNode | null = null;
 let isFreezerActive = false;
+let lastFreezerVolume = -1;
+
+// Dãy tủ đông Dairy & Frozen tường Bắc (Phase 7): X ∈ [-17.45, -3.15], Z = -26.2
+const FREEZER_MIN_X = -17.45;
+const FREEZER_MAX_X = -3.15;
+const FREEZER_WALL_Z = -26.2;
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === "undefined" || !window.AudioContext) return null;
@@ -148,12 +154,13 @@ function stopCartRolling(): void {
 
 /**
  * 2. Âm thanh không gian của tủ đông lạnh (Freezer Ambient Hum)
- * Điều biến âm lượng tùy thuộc vào khoảng cách của người chơi tới bức tường tủ đông (z = -6.1m)
+ * Điều biến âm lượng tùy thuộc vào khoảng cách tới dãy tủ đông tường Bắc (X ∈ [-17.45, -3.15], Z = -26.2m)
  */
 export function updateFreezerHum(playerX: number, playerZ: number): void {
   if (checkMuted()) {
-    if (freezerGain && audioContext) {
+    if (freezerGain && audioContext && lastFreezerVolume !== 0.0001) {
       freezerGain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+      lastFreezerVolume = 0.0001;
     }
     return;
   }
@@ -161,15 +168,19 @@ export function updateFreezerHum(playerX: number, playerZ: number): void {
   const ctx = getAudioContext();
   if (!ctx) return;
 
-  // Tủ đông đặt tại z = -6.1m, trải dài x từ -4 đến +4
-  // Khoảng cách tới bức tường tủ đông
-  const distanceToFreezer = Math.abs(playerZ - (-6.1));
-  const maxAudibleDistance = 5.5; // Bắt đầu nghe thấy từ 5.5m trở lại
+  const clampedX = Math.max(FREEZER_MIN_X, Math.min(FREEZER_MAX_X, playerX));
+  const distanceToFreezer = Math.hypot(playerX - clampedX, playerZ - FREEZER_WALL_Z);
+  const maxAudibleDistance = 6.5;
 
   let targetVolume = 0.0001;
   if (distanceToFreezer < maxAudibleDistance) {
     const proximity = 1 - distanceToFreezer / maxAudibleDistance;
     targetVolume = Math.min(0.04, proximity * 0.04);
+  }
+
+  // Bỏ qua nếu mức âm lượng hầu như không đổi (tránh spam cancelScheduledValues 60 lần/giây)
+  if (freezerOscillator && Math.abs(targetVolume - lastFreezerVolume) < 0.0005) {
+    return;
   }
 
   const initFreezer = () => {
@@ -189,9 +200,11 @@ export function updateFreezerHum(playerX: number, playerZ: number): void {
 
         freezerOscillator.start(now);
         isFreezerActive = true;
+        lastFreezerVolume = targetVolume;
       } else if (freezerGain) {
         freezerGain.gain.cancelScheduledValues(now);
         freezerGain.gain.setTargetAtTime(targetVolume, now, 0.1);
+        lastFreezerVolume = targetVolume;
       }
     } catch {
       isFreezerActive = false;
@@ -199,7 +212,6 @@ export function updateFreezerHum(playerX: number, playerZ: number): void {
   };
 
   if (ctx.state === "suspended") {
-    // Không cố resume liên tục nếu người dùng chưa tương tác
     return;
   }
   initFreezer();
@@ -455,6 +467,7 @@ export function playPaymentSuccessFanfare(): void {
 /** Dọn dẹp toàn bộ âm thanh liên tục khi blur hoặc thoát */
 export function stopAllSupermarketSounds(): void {
   stopCartRolling();
+  lastFreezerVolume = -1;
   if (freezerGain && audioContext) {
     try {
       freezerGain.gain.setValueAtTime(0.0001, audioContext.currentTime);

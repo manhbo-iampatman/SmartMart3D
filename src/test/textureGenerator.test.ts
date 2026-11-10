@@ -10,16 +10,23 @@ import {
   getMiloTexture,
   getStingTexture,
   getSimplyTexture,
+  getTerrazzoFloorTextures,
+  getPegboardTexture,
+  getContactAOTexture,
+  getTrolleyBlobShadowTexture,
 } from "../utils/textureGenerator";
+import { getGroceryTextureAtlas } from "../utils/textureAtlasGenerator";
 
-beforeAll(() => {
+const createMockContext = () => {
   const gradient = { addColorStop: vi.fn() };
-  const context = {
+  return {
     arc: vi.fn(),
     beginPath: vi.fn(),
     bezierCurveTo: vi.fn(),
     closePath: vi.fn(),
     createLinearGradient: vi.fn(() => gradient),
+    createRadialGradient: vi.fn(() => gradient),
+    drawImage: vi.fn(),
     fill: vi.fn(),
     fillRect: vi.fn(),
     fillText: vi.fn(),
@@ -32,7 +39,10 @@ beforeAll(() => {
     lineWidth: 1,
     textAlign: "start",
   } as unknown as CanvasRenderingContext2D;
+};
 
+beforeAll(() => {
+  const context = createMockContext();
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
     () => context
   );
@@ -78,6 +88,46 @@ describe("textureGenerator - Tạo Texture PBR Nhãn Hàng Việt Nam (Phase 2)"
     const tex1 = getProductTextureById("prod-milk-vinamilk");
     const tex2 = getProductTextureById("prod-milk-vinamilk");
     expect(tex1).toBe(tex2);
+  });
+
+  it("Gate 1 Phase 8: PBR Floor / Pegboard / AO / BlobShadow phân biệt chuẩn SRGBColorSpace & NoColorSpace + anisotropy <= 4", () => {
+    const floor = getTerrazzoFloorTextures(16); // Ép trần max 4 dù GPU hỗ trợ 16x
+    expect(floor.colorMap).toBeInstanceOf(THREE.CanvasTexture);
+    expect(floor.colorMap.colorSpace).toBe(THREE.SRGBColorSpace);
+    expect(floor.colorMap.anisotropy).toBeLessThanOrEqual(4);
+    expect(floor.roughnessMap.colorSpace).toBe(THREE.NoColorSpace);
+    expect(floor.bumpMap.colorSpace).toBe(THREE.NoColorSpace);
+
+    const pegboard = getPegboardTexture();
+    const contactAO = getContactAOTexture();
+    const trolleyBlob = getTrolleyBlobShadowTexture();
+    const vinamilk = getVinamilkTexture();
+    const groceryAtlas = getGroceryTextureAtlas();
+
+    expect(pegboard.colorSpace).toBe(THREE.SRGBColorSpace);
+    expect(contactAO.colorSpace).toBe(THREE.SRGBColorSpace);
+    expect(trolleyBlob.colorSpace).toBe(THREE.SRGBColorSpace);
+    expect(vinamilk.colorSpace).toBe(THREE.SRGBColorSpace);
+    expect(groceryAtlas.colorSpace).toBe(THREE.SRGBColorSpace);
+    expect(getTerrazzoFloorTextures(4).colorMap).toBe(floor.colorMap);
+  });
+
+  it("Gate 1 Phase 8 fallback JSDOM: không crash khi HTMLCanvasElement.getContext trả về null", async () => {
+    vi.resetModules();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+    const freshMod = await import("../utils/textureGenerator");
+
+    const floor = freshMod.getTerrazzoFloorTextures(8);
+    expect(floor.colorMap).toBeInstanceOf(THREE.Texture);
+    expect(floor.roughnessMap).toBeInstanceOf(THREE.Texture);
+    expect(floor.bumpMap).toBeInstanceOf(THREE.Texture);
+    expect(freshMod.getPegboardTexture()).toBeInstanceOf(THREE.Texture);
+    expect(freshMod.getContactAOTexture()).toBeInstanceOf(THREE.Texture);
+    expect(freshMod.getTrolleyBlobShadowTexture()).toBeInstanceOf(THREE.Texture);
+
+    // Khôi phục context mock cho các suite sau
+    const ctx = createMockContext();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => ctx);
   });
 });
 

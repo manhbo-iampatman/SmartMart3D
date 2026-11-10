@@ -159,14 +159,16 @@ const ProduceProductInstancedBatch: React.FC<{ batch: ProduceProductBatch }> = (
   const ref = useRef<THREE.InstancedMesh>(null);
 
   useLayoutEffect(() => {
-    applyMatricesToInstancedMesh(ref.current, batch.matrices);
+    applyMatricesToInstancedMesh(ref.current, batch.matrices, 0, undefined, {
+      staticTransform: true,
+      enableLayer1: true,
+    });
   }, [batch.matrices]);
 
   return (
     <instancedMesh
       ref={ref}
       args={[batch.geometry, batch.material, batch.matrices.length]}
-      castShadow
       receiveShadow
       userData={{ product: batch.product }}
       onClick={(e) => e.stopPropagation()}
@@ -329,8 +331,13 @@ const ProduceFurnitureInstanced: React.FC<{
   }), []);
 
   useLayoutEffect(() => {
-    applyMatricesToInstancedMesh(solidRef.current, furnitureData.solids, 0, furnitureData.solidColors);
-    applyMatricesToInstancedMesh(acrylicRef.current, furnitureData.acrylics);
+    applyMatricesToInstancedMesh(solidRef.current, furnitureData.solids, 0, furnitureData.solidColors, {
+      staticTransform: true,
+      enableLayer1: true,
+    });
+    applyMatricesToInstancedMesh(acrylicRef.current, furnitureData.acrylics, 0, undefined, {
+      staticTransform: true,
+    });
   }, [furnitureData]);
 
   return (
@@ -421,10 +428,10 @@ export const ProduceSection: React.FC = () => {
     applyMatricesToInstancedMesh(stemRef.current, stemMatrices);
   }, [stemMatrices]);
 
-  // LOD Culling > 18m chỉ áp dụng lên cuống nhỏ và chữ bảng giá chân quỳ; 6 InstancedMesh nông sản luôn hiển thị
+  // LOD Culling > 16m chỉ áp dụng lên cuống nhỏ và chữ bảng giá chân quỳ; 6 InstancedMesh nông sản luôn hiển thị
   useCameraLod([
-    { ref: stemRef, center: [10.75, 0, -8.0], maxDistance: 18 },
-    { ref: pricePlaquesRef, center: [10.75, 0, -8.0], maxDistance: 18 },
+    { ref: stemRef, center: [11.5, 0, -8.0], maxDistance: 16 },
+    { ref: pricePlaquesRef, center: [11.5, 0, -8.0], maxDistance: 16 },
   ]);
 
   return (

@@ -8,7 +8,7 @@ import { isSpatialInputBlocked } from "../../utils/spatialInteraction";
  */
 export const VirtualJoystick: React.FC = () => {
   const setVirtualMove = useAppStore((state) => state.setVirtualMove);
-  const state = useAppStore();
+  const blocked = useAppStore(isSpatialInputBlocked);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [knobPos, setKnobPos] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -77,7 +77,7 @@ export const VirtualJoystick: React.FC = () => {
 
   // Xử lý Touch Events
   const handleTouchStart = (event: React.TouchEvent) => {
-    if (isSpatialInputBlocked(state)) return;
+    if (blocked) return;
     const touch = event.changedTouches[0];
     touchIdRef.current = touch.identifier;
     setIsDragging(true);
@@ -94,7 +94,7 @@ export const VirtualJoystick: React.FC = () => {
 
   // Xử lý Mouse Events (phục vụ test và debug trên desktop responsive mode)
   const handleMouseDown = (event: React.MouseEvent) => {
-    if (isSpatialInputBlocked(state)) return;
+    if (blocked) return;
     setIsDragging(true);
     processPoint(event.clientX, event.clientY);
   };
@@ -104,7 +104,7 @@ export const VirtualJoystick: React.FC = () => {
     processPoint(event.clientX, event.clientY);
   };
 
-  if (!isTouchDevice || isSpatialInputBlocked(state)) return null;
+  if (!isTouchDevice || blocked) return null;
 
   return (
     <div
@@ -123,12 +123,12 @@ export const VirtualJoystick: React.FC = () => {
         onMouseMove={handleMouseMove}
         onMouseUp={resetJoystick}
         onMouseLeave={resetJoystick}
-        className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-2 border-white/40 bg-slate-950/60 backdrop-blur-md flex items-center justify-center relative shadow-2xl"
+        className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-2 border-hyper-border bg-hyper-card/90 flex items-center justify-center relative shadow-lg"
       >
         {/* Đường định hướng N/S/W/E */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
-          <div className="w-full h-px bg-white/40" />
-          <div className="h-full w-px bg-white/40 absolute" />
+          <div className="w-full h-px bg-slate-300" />
+          <div className="h-full w-px bg-slate-300 absolute" />
         </div>
 
         {/* Nút gạt trung tâm (Knob) */}
@@ -136,14 +136,14 @@ export const VirtualJoystick: React.FC = () => {
           style={{
             transform: `translate3d(${knobPos.x}px, ${knobPos.y}px, 0)`,
           }}
-          className={`w-12 h-12 rounded-full bg-gradient-to-tr from-orange-600 to-amber-500 border border-white/80 shadow-lg flex items-center justify-center text-white transition-transform ${
+          className={`w-12 h-12 rounded-full bg-hyper-accent border-2 border-white shadow-md flex items-center justify-center text-white transition-transform ${
             isDragging ? "scale-105 duration-0" : "duration-150"
           }`}
         >
           <div className="w-3.5 h-3.5 rounded-full bg-white/90 shadow-inner" />
         </div>
       </div>
-      <p className="text-[10px] text-slate-300 text-center font-bold mt-1.5 drop-shadow">
+      <p className="text-[10px] text-hyper-ink bg-hyper-card/90 border border-hyper-border rounded-full px-2 py-0.5 text-center font-bold mt-1.5 shadow-sm">
         Cần gạt di chuyển
       </p>
     </div>

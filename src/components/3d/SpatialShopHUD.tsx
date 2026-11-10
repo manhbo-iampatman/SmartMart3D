@@ -19,6 +19,22 @@ import { updateAudioMuteState } from "../../utils/supermarketAudio";
 
 const ALL_CATEGORIES = "Tất cả";
 
+interface HudCategoryTab {
+  label: string;
+  categories?: readonly string[];
+}
+
+const HUD_CATEGORY_TABS: readonly HudCategoryTab[] = [
+  { label: ALL_CATEGORIES },
+  { label: "Đồ uống", categories: ["Nước Giải Khát", "Bia & Đồ Uống Có Cồn"] },
+  { label: "Sữa & Cà phê", categories: ["Sữa & Sản Phẩm Từ Sữa", "Cà Phê & Trà"] },
+  { label: "Bánh & Mì", categories: ["Bánh Kẹo & Snack", "Mì & Đồ Khô"] },
+  { label: "Gia vị", categories: ["Gia Vị & Nấu Ăn"] },
+  { label: "Rau củ tươi", categories: ["Gia Vị & Nông Sản"] },
+  { label: "Thời trang", categories: ["Thời Trang & Phụ Kiện"] },
+  { label: "Gia đình", categories: ["Chăm Sóc Gia Đình"] },
+];
+
 export const SpatialShopHUD: React.FC = () => {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES);
@@ -33,22 +49,18 @@ export const SpatialShopHUD: React.FC = () => {
   const totalVND = useCartStore((state) => state.getTotalVND());
 
   const catalog = ALL_PRODUCTS;
-  const categories = useMemo(
-    () => [
-      ALL_CATEGORIES,
-      ...Array.from(new Set(catalog.map((product) => product.category))),
-    ],
-    [catalog]
+  const activeTab = useMemo(
+    () => HUD_CATEGORY_TABS.find((tab) => tab.label === selectedCategory) ?? HUD_CATEGORY_TABS[0],
+    [selectedCategory]
   );
 
   const filteredProducts = useMemo(() => {
     return catalog.filter((product) => {
       const matchesCategory =
-        selectedCategory === ALL_CATEGORIES ||
-        product.category === selectedCategory;
+        !activeTab.categories || activeTab.categories.includes(product.category);
       return matchesCategory && matchesProduct(product, query);
     });
-  }, [catalog, query, selectedCategory]);
+  }, [catalog, query, activeTab]);
 
   const showResults =
     query.trim().length > 0 || selectedCategory !== ALL_CATEGORIES;
@@ -62,7 +74,7 @@ export const SpatialShopHUD: React.FC = () => {
   return (
     <div className="absolute inset-0 z-20 pointer-events-none text-slate-900">
       <div className="absolute top-3 left-1/2 -translate-x-1/2 w-[min(880px,calc(100%-2rem))] pointer-events-auto font-sans">
-        <div className="rounded-2xl border border-white/80 bg-white/95 shadow-xl shadow-slate-950/15 backdrop-blur-xl p-2 flex items-center gap-2">
+        <div className="rounded-2xl border border-hyper-border bg-hyper-card/95 shadow-xl shadow-slate-950/10 p-2 flex items-center gap-2">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600" />
             <input
@@ -137,23 +149,23 @@ export const SpatialShopHUD: React.FC = () => {
         </div>
 
         <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {categories.map((category) => (
+          {HUD_CATEGORY_TABS.map((tab) => (
             <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-bold backdrop-blur-md transition-colors ${
-                selectedCategory === category
-                  ? "border-blue-600 bg-blue-600 text-white shadow-sm"
-                  : "border-white/80 bg-white/90 text-slate-700 hover:bg-white"
+              key={tab.label}
+              onClick={() => setSelectedCategory(tab.label)}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                selectedCategory === tab.label
+                  ? "border-hyper-primary bg-hyper-primary text-white shadow-sm"
+                  : "border-hyper-border bg-hyper-card/95 text-hyper-ink hover:bg-hyper-surface"
               }`}
             >
-              {category}
+              {tab.label}
             </button>
           ))}
         </div>
 
         {showResults && (
-          <div className="mt-2 ml-auto w-full sm:w-[420px] max-h-72 overflow-y-auto rounded-2xl border border-white/80 bg-white/95 shadow-2xl backdrop-blur-xl p-2">
+          <div className="mt-2 ml-auto w-full sm:w-[420px] max-h-72 overflow-y-auto rounded-2xl border border-hyper-border bg-hyper-card/95 shadow-2xl p-2">
             <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
               {filteredProducts.length} sản phẩm trong danh mục
             </div>

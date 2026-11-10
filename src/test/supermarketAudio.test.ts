@@ -76,7 +76,7 @@ describe("supermarketAudio - Động cơ âm thanh không gian siêu thị 3D", 
     expect(gain.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.0001, 2.2);
   });
 
-  it("điều biến âm lượng tủ đông (freezer hum) tăng dần khi lại gần bức tường z = -6.1m", async () => {
+  it("điều biến âm lượng tủ đông tường Bắc (freezer hum) khi lại gần & cache mức âm lượng", async () => {
     const oscillator = {
       type: "",
       frequency: { setValueAtTime: vi.fn() },
@@ -115,13 +115,17 @@ describe("supermarketAudio - Động cơ âm thanh không gian siêu thị 3D", 
 
     const audio = await import("../utils/supermarketAudio");
 
-    // Đứng ở lối vào z = 4.5m (quá xa > 5.5m) -> âm lượng 0.0001
+    // Đứng ở lối vào z = 4.5m (quá xa tường Bắc Z = -26.2m) -> âm lượng 0.0001
     audio.updateFreezerHum(0, 4.5);
     expect(gain.gain.setValueAtTime).toHaveBeenCalledWith(0.0001, 5);
 
-    // Tiến lại gần tủ đông z = -5.0m (cách 1.1m) -> âm lượng tăng
-    audio.updateFreezerHum(0, -5.0);
-    expect(gain.gain.setTargetAtTime).toHaveBeenCalled();
+    // Tiến lại gần dãy tủ đông tường Bắc (-10.3, -24.5) (cách 1.7m < 6.5m) -> âm lượng tăng
+    audio.updateFreezerHum(-10.3, -24.5);
+    expect(gain.gain.setTargetAtTime).toHaveBeenCalledTimes(1);
+
+    // Gọi lại cùng vị trí phải hit cache (không spam cancelScheduledValues / setTargetAtTime)
+    audio.updateFreezerHum(-10.3, -24.5);
+    expect(gain.gain.setTargetAtTime).toHaveBeenCalledTimes(1);
   });
 
   it("phát tiếng gõ kim loại va chạm (cart drop clack) khi bỏ hàng vào xe", async () => {

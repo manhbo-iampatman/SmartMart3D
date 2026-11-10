@@ -89,4 +89,12 @@ describe("ProductInspector3D - nghiệm thu giai đoạn 3", () => {
     expect(useAppStore.getState().inspectingProduct).toBeNull();
     expect(useCartStore.getState().getTotalItems()).toBe(0);
   });
+
+  it("Phase 8: khung xem 360° dùng nền studio sáng bg-hyper-surface đồng bộ UI", () => {
+    act(() => useAppStore.getState().setInspectingProduct(milk));
+    render(<ProductInspector3D />);
+    const dialog = screen.getByRole("dialog", { name: milk.name });
+    expect(dialog.querySelector(".bg-hyper-surface")).not.toBeNull();
+    expect(dialog.innerHTML).not.toContain("from-slate-900");
+  });
 });
